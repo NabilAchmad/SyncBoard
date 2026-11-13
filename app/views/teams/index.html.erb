@@ -1,0 +1,133 @@
+<% content_for :title, "Tim & Kode Undangan — SyncBoard" %>
+<% content_for :page_title, "Tim & Kode Undangan" %>
+
+<div class="space-y-6">
+  <!-- Daftar Tim yang Diikuti -->
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 class="text-lg font-extrabold text-slate-900">Tim Anda (<%= @memberships.size %>)</h2>
+        <p class="mt-0.5 text-xs text-slate-500">Pilih tim aktif, bagikan kode undangan 6 karakter, atau kelola keanggotaan Anda.</p>
+      </div>
+    </div>
+
+    <% if @memberships.any? %>
+      <div class="grid gap-4 md:grid-cols-2">
+        <% @memberships.each do |membership| %>
+          <% team = membership.team %>
+          <% is_active = current_team&.id == team.id %>
+          <div class="flex flex-col justify-between rounded-2xl border <%= is_active ? 'border-indigo-300 bg-indigo-50/30' : 'border-slate-200 bg-white' %> p-5 space-y-4">
+            <div class="space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="truncate text-base font-bold text-slate-900"><%= team.name %></h3>
+                    <% if is_active %>
+                      <span class="rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">Aktif</span>
+                    <% end %>
+                  </div>
+                  <p class="mt-0.5 text-xs text-slate-500"><%= team.description.presence || "Workspace kolaborasi tim" %></p>
+                </div>
+                <span class="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold <%= membership.lead? ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700' %>">
+                  <%= membership.role_label %>
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span><%= team.team_memberships.size %> anggota</span>
+                <span>·</span>
+                <span><%= team.projects.size %> proyek</span>
+              </div>
+
+              <% if membership.lead? %>
+                <div class="flex items-center justify-between gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2">
+                  <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Kode Undangan</p>
+                    <p class="font-mono text-sm font-extrabold tracking-widest text-indigo-700"><%= team.invite_code %></p>
+                  </div>
+                  <button type="button"
+                          data-action="sidebar#copyCode"
+                          data-code="<%= team.invite_code %>"
+                          class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 cursor-pointer">
+                    Salin Kode
+                  </button>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+              <% if is_active %>
+                <%= link_to "Buka Workspace →", root_path, class: "rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-600 transition" %>
+              <% else %>
+                <%= button_to "Masuk Tim Ini", switch_team_path(team),
+                  method: :post,
+                  class: "rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition cursor-pointer" %>
+              <% end %>
+
+              <%= button_to "Keluar Tim", leave_team_path(team),
+                method: :delete,
+                class: "rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition cursor-pointer" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-xs text-slate-500">
+        Anda belum tergabung di tim mana pun. Gunakan form di bawah untuk memasukkan kode undangan atau membuat tim baru.
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Gabung Tim / Buat Tim Baru -->
+  <div class="grid gap-6 md:grid-cols-2">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Gabung Tim dengan Kode Undangan</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Masukkan kode 6 karakter gabungan huruf &amp; angka dari Team Lead tim tujuan.</p>
+      </div>
+
+      <%= form_with url: join_teams_path, method: :post, class: "space-y-4" do %>
+        <div>
+          <%= label_tag :invite_code, "Kode Undangan (6 Karakter)", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+          <%= text_field_tag :invite_code, nil,
+            required: true,
+            maxlength: 6,
+            autocomplete: "off",
+            placeholder: "A7K9P2",
+            class: "mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-center font-mono text-base font-extrabold uppercase tracking-[0.35em] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        </div>
+
+        <%= submit_tag "Gabung ke Tim →",
+          class: "w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+      <% end %>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Buat Tim Baru</h3>
+        <p class="mt-0.5 text-xs text-slate-500">Otomatis menjadi Team Lead dan menghasilkan kode undangan baru.</p>
+      </div>
+
+      <%= form_with model: (@new_team || Team.new), url: teams_path, class: "space-y-3.5" do |form| %>
+        <div>
+          <%= form.label :name, "Nama Tim", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+          <%= form.text_field :name,
+            required: true,
+            placeholder: "Misal: Tim Mobile Squad",
+            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        </div>
+
+        <div>
+          <%= form.label :description, "Deskripsi Singkat (Opsional)", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+          <%= form.text_field :description,
+            placeholder: "Keterangan tim atau sprint...",
+            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        </div>
+
+        <%= form.submit "✨ Buat Tim Baru",
+          class: "w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 transition cursor-pointer shadow-xs" %>
+      <% end %>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,12 @@
+one_alpha:
+  team: alpha
+  user: one
+  role: member
+  joined_at: <%= Time.current.to_fs(:db) %>
+
+two_alpha:
+  team: alpha
+  user: two
+  role: lead
+  joined_at: <%= Time.current.to_fs(:db) %>
+

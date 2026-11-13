@@ -1,0 +1,105 @@
+<% id_prefix = item.persisted? ? "edit_item_#{item.id}" : "new_action_item" %>
+<% initial_mode = item.persisted? && item.updates_existing_task? ? "existing" : "create" %>
+<% existing_action_options = MeetingActionItem::EXISTING_ACTION_TYPES.map { |type| [MeetingActionItem::ACTION_TYPES[type], type] } %>
+<% existing_selected_action = item.updates_existing_task? ? item.action_type : "update_task" %>
+
+<%= form_with model: item,
+  url: url,
+  method: method,
+  namespace: id_prefix,
+  class: "mt-3 space-y-3",
+  data: {
+    controller: "summary-item-form",
+    "summary-item-form-mode-value": initial_mode
+  } do |form| %>
+  <fieldset>
+    <legend class="mb-1.5 text-[11px] font-semibold text-slate-700">Jenis Aksi Kanban</legend>
+    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 hover:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500">
+        <%= radio_button_tag :item_mode, "create", initial_mode == "create",
+          id: "#{id_prefix}_mode_create",
+          data: { action: "change->summary-item-form#switchMode" },
+          class: "h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500" %>
+        <span>Buat Ticket Baru</span>
+      </label>
+
+      <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 hover:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500">
+        <%= radio_button_tag :item_mode, "existing", initial_mode == "existing",
+          id: "#{id_prefix}_mode_existing",
+          data: { action: "change->summary-item-form#switchMode" },
+          class: "h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500" %>
+        <span>Update Ticket yang Sudah Ada</span>
+      </label>
+    </div>
+  </fieldset>
+
+  <div data-summary-item-form-target="existingGroup" class="grid grid-cols-1 gap-2 sm:grid-cols-2 <%= 'hidden' unless initial_mode == 'existing' %>">
+    <div class="min-w-0">
+      <%= form.label :action_type, "Tipe Update", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.select :action_type,
+        options_for_select(existing_action_options, existing_selected_action),
+        {},
+        disabled: initial_mode != "existing",
+        data: { "summary-item-form-target": "existingActionSelect" },
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="min-w-0">
+      <%= form.label :target_task_id, "Pilih Ticket Target", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.select :target_task_id,
+        options_from_collection_for_select(project_tasks, :id, ->(t) { "#{t.code}: #{t.title.truncate(32)}" }, item.target_task_id),
+        { include_blank: "Pilih ticket di board..." },
+        disabled: initial_mode != "existing",
+        required: initial_mode == "existing",
+        data: { "summary-item-form-target": "targetTaskSelect" },
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+  </div>
+
+  <div class="min-w-0">
+    <%= form.label :title, "Judul Ticket / Catatan Update", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+    <%= form.text_field :title,
+      required: initial_mode == "create",
+      placeholder: initial_mode == "existing" ? "Catatan update (opsional, kosongkan untuk pakai judul ticket asli)..." : "Judul ticket / task baru...",
+      data: { "summary-item-form-target": "titleInput" },
+      class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+  </div>
+
+  <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="min-w-0">
+      <%= form.label :target_column, "Kolom Target", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.select :target_column,
+        options_for_select(Task::COLUMNS.map { |k, v| [v, k] }, item.target_column.presence || "todo"),
+        {},
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="min-w-0">
+      <%= form.label :priority, "Prioritas", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.select :priority,
+        options_for_select(Task::PRIORITIES.map { |k, v| [v, k] }, item.priority.presence || "medium"),
+        {},
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="min-w-0">
+      <%= form.label :assignee_id, "PIC", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.select :assignee_id,
+        options_from_collection_for_select(team_members, :id, :full_name, item.assignee_id),
+        { include_blank: "Pilih PIC..." },
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="min-w-0">
+      <%= form.label :due_date, "Target Penyelesaian", class: "mb-1 block text-[11px] font-medium text-slate-700" %>
+      <%= form.date_field :due_date,
+        class: "block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+  </div>
+
+  <div>
+    <%= form.submit submit_label,
+      class: "rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer transition" %>
+  </div>
+<% end %>
+

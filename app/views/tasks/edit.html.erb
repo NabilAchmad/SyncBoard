@@ -1,0 +1,77 @@
+<% content_for :title, "Edit #{@task.code}: SyncBoard" %>
+<% content_for :page_title, "Edit Task #{@task.code}" %>
+
+<div class="mx-auto max-w-2xl space-y-4">
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
+    <div class="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+      <div>
+        <span class="rounded-md bg-indigo-50 px-2.5 py-1 font-mono text-xs font-bold text-indigo-800"><%= @task.code %></span>
+        <p class="mt-1.5 text-xs text-slate-600">Proyek: <%= @project.name %></p>
+        <p class="mt-0.5 text-xs text-slate-600">
+          Dibuat: <span class="font-medium text-slate-800"><%= format_date_id(@task.created_at, include_time: true) %> WIB</span>
+          <% if @task.source_meeting %>
+            · ACC Rapat <span class="font-medium text-emerald-800"><%= @task.source_meeting.room_code %></span>
+            (<%= format_date_id(@task.source_meeting.approved_at || @task.created_at, include_time: true) %> WIB)
+          <% end %>
+        </p>
+      </div>
+      <%= button_to "Hapus Task", project_task_path(@project, @task),
+        method: :delete,
+        form: { data: { turbo_confirm: "Hapus task #{@task.code} secara permanen?" } },
+        class: "rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer" %>
+    </div>
+
+    <%= form_with model: [@project, @task], class: "space-y-4" do |form| %>
+      <%= render "shared/form_errors", record: @task %>
+
+      <div>
+        <%= form.label :title, "Judul Task", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.text_field :title, required: true,
+          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+
+      <div>
+        <%= form.label :description, "Deskripsi / Catatan Teknis", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.text_area :description, rows: 4,
+          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <%= form.label :column_status, "Kolom Kanban", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.select :column_status, Task::COLUMNS.map { |k, v| [v, k] }, {},
+            class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none" %>
+        </div>
+
+        <div>
+          <%= form.label :priority, "Prioritas", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.select :priority, Task::PRIORITIES.map { |k, v| [v, k] }, {},
+            class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none" %>
+        </div>
+
+        <div>
+          <%= form.label :assignee_id, "PIC / Assignee", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.select :assignee_id,
+            options_from_collection_for_select(@team_members, :id, :full_name, @task.assignee_id),
+            { include_blank: "Belum ditentukan" },
+            class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none" %>
+        </div>
+
+        <div>
+          <%= form.label :due_date, "Target Penyelesaian (Due Date)", class: "block text-sm font-medium text-slate-700" %>
+          <%= form.date_field :due_date,
+            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          <% if @task.due_date.present? %>
+            <div class="mt-1.5"><%= task_due_badge(@task) %></div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+        <%= link_to "Kembali ke Kanban", project_path(@project), class: "rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100" %>
+        <%= form.submit "Simpan Task", class: "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+

@@ -1,0 +1,85 @@
+<% content_for :title, "Daftar Anggota — SyncBoard" %>
+
+<div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+  <h2 class="text-2xl font-bold text-slate-900">Registrasi Anggota Tim</h2>
+  <p class="mt-1 text-sm text-slate-500">Buat akun SyncBoard untuk mengakses Kanban Board dan Video Meeting Room.</p>
+
+  <%= form_with model: @user, url: registration_path, class: "mt-6 space-y-4" do |form| %>
+    <%= render "shared/form_errors", record: @user %>
+
+    <div>
+      <%= form.label :full_name, "Nama Lengkap", class: "block text-sm font-medium text-slate-700" %>
+      <%= form.text_field :full_name,
+        required: true,
+        autofocus: true,
+        placeholder: "Nabil Pratama",
+        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <%= form.label :department, "Divisi", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.select :department, User::DEPARTMENTS, {},
+          class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+
+      <div>
+        <%= form.label :job_title, "Role / Jabatan", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.text_field :job_title,
+          required: true,
+          placeholder: "Fullstack Engineer",
+          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :email_address, "Email Tim", class: "block text-sm font-medium text-slate-700" %>
+      <%= form.email_field :email_address,
+        required: true,
+        autocomplete: "email",
+        placeholder: "nama@perusahaan.com",
+        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <%= form.label :password, "Password", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.password_field :password,
+          required: true,
+          autocomplete: "new-password",
+          maxlength: 72,
+          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+
+      <div>
+        <%= form.label :password_confirmation, "Ulangi Password", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.password_field :password_confirmation,
+          required: true,
+          autocomplete: "new-password",
+          maxlength: 72,
+          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      </div>
+    </div>
+
+    <div>
+      <%= label_tag :invite_code, "Kode Undangan Tim (Opsional)", class: "block text-sm font-medium text-slate-700" %>
+      <%= text_field_tag :invite_code,
+        params[:invite_code],
+        maxlength: 6,
+        autocomplete: "off",
+        placeholder: "Misal: A7K9P2 (kosongkan jika belum punya)",
+        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 font-mono text-sm uppercase tracking-widest focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+      <p class="mt-1 text-[11px] text-slate-400">Masukkan kode 6 karakter huruf &amp; angka untuk langsung masuk tim, atau kosongkan dulu.</p>
+    </div>
+
+    <div class="pt-2">
+      <%= form.submit "Daftar & Masuk Workspace",
+        class: "w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+    </div>
+  <% end %>
+
+  <p class="mt-6 text-center text-sm text-slate-500">
+    Sudah punya akun?
+    <%= link_to "Masuk di sini", new_session_path, class: "font-semibold text-indigo-600 hover:text-indigo-500" %>
+  </p>
+</div>

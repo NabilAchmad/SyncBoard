@@ -1,0 +1,23 @@
+<div id="<%= dom_id(project, :activity_feed) %>" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-5">
+  <h3 class="text-base font-bold text-slate-900">Riwayat Perubahan Board</h3>
+  <p class="text-xs text-slate-500">Perpindahan kartu drag-and-drop & update otomatis dari ACC rapat.</p>
+
+  <% if activity_logs.any? %>
+    <ul class="mt-4 space-y-3">
+      <% activity_logs.each do |log| %>
+        <li class="border-l-2 <%= log.meeting_id.present? ? 'border-emerald-400' : 'border-slate-200' %> pl-3 text-xs">
+          <p class="font-medium text-slate-800"><%= log.summary %></p>
+          <p class="mt-0.5 text-[11px] text-slate-400">
+            <%= log.created_at.strftime("%d %b %Y %H:%M") %>
+            <% if log.meeting %>
+              · <span class="font-semibold text-indigo-600">Room <%= log.meeting.room_code %></span>
+            <% end %>
+          </p>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="mt-4 text-xs text-slate-500">Belum ada perubahan tercatat pada proyek ini.</p>
+  <% end %>
+</div>
+

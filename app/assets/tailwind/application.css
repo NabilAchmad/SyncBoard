@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Stateless role visibility so Turbo Stream broadcasts work identically for all connected clients */
+body[data-user-role="member"] .lead-only {
+  display: none !important;
+}
+
+body[data-user-role="lead"] .member-only {
+  display: none !important;
+}
