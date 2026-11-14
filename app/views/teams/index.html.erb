@@ -31,9 +31,9 @@
               </div>
 
               <div class="flex flex-wrap items-center gap-3 font-mono text-xs text-on-surface-muted">
-                <span><%= team.team_memberships.size %> anggota</span>
+                <span><%= @member_counts_by_team ? @member_counts_by_team.fetch(team.id, 0) : team.team_memberships.size %> anggota</span>
                 <span aria-hidden="true">·</span>
-                <span><%= team.projects.size %> proyek</span>
+                <span><%= @project_counts_by_team ? @project_counts_by_team.fetch(team.id, 0) : team.projects.size %> proyek</span>
               </div>
 
               <% if membership.lead? %>

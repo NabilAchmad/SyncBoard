@@ -40,21 +40,29 @@ class QueryPerformanceTest < ActionDispatch::IntegrationTest
   test "edit project, workspace index, kanban board, and meeting room stay free of N+1 queries" do
     edit_queries = capture_queries { get edit_project_path(@project) }
     assert_response :success
-    assert_operator edit_queries.size, :<=, 7, "Expected /projects/:id/edit <= 7 queries, got #{edit_queries.size}:\n#{edit_queries.join("\n")}"
+    assert_operator edit_queries.size, :<=, 4, "Expected /projects/:id/edit <= 4 queries, got #{edit_queries.size}:\n#{edit_queries.join("\n")}"
 
     index_queries = capture_queries { get root_path }
     assert_response :success
-    assert_operator index_queries.size, :<=, 13, "Expected GET / <= 13 queries, got #{index_queries.size}:\n#{index_queries.join("\n")}"
+    assert_operator index_queries.size, :<=, 7, "Expected GET / <= 7 queries, got #{index_queries.size}:\n#{index_queries.join("\n")}"
     assert_includes response.body, "0% (0/5)"
     assert_includes response.body, "Gabung Room · #{@meeting.room_code}"
 
+    teams_queries = capture_queries { get teams_path }
+    assert_response :success
+    assert_operator teams_queries.size, :<=, 4, "Expected GET /teams <= 4 queries, got #{teams_queries.size}:\n#{teams_queries.join("\n")}"
+
+    team_members_queries = capture_queries { get team_members_path }
+    assert_response :success
+    assert_operator team_members_queries.size, :<=, 4, "Expected GET /team_members <= 4 queries, got #{team_members_queries.size}:\n#{team_members_queries.join("\n")}"
+
     show_queries = capture_queries { get project_path(@project) }
     assert_response :success
-    assert_operator show_queries.size, :<=, 13, "Expected /projects/:id <= 13 queries, got #{show_queries.size}:\n#{show_queries.join("\n")}"
+    assert_operator show_queries.size, :<=, 8, "Expected /projects/:id <= 8 queries, got #{show_queries.size}:\n#{show_queries.join("\n")}"
 
     meeting_queries = capture_queries { get project_meeting_path(@project, @meeting) }
     assert_response :success
-    assert_operator meeting_queries.size, :<=, 14, "Expected /projects/:id/meetings/:id <= 14 queries, got #{meeting_queries.size}:\n#{meeting_queries.join("\n")}"
+    assert_operator meeting_queries.size, :<=, 10, "Expected /projects/:id/meetings/:id <= 10 queries, got #{meeting_queries.size}:\n#{meeting_queries.join("\n")}"
   end
 
   private

@@ -5,9 +5,9 @@ class TeamMembersController < ApplicationController
 
   def index
     @memberships = current_team.team_memberships
-      .includes(user: { avatar_attachment: :blob })
-      .joins(:user)
+      .eager_load(user: { avatar_attachment: :blob })
       .merge(User.ordered_by_name)
+      .to_a
   end
 
   def update

@@ -53,12 +53,10 @@ class Team < ApplicationRecord
   end
 
   def active_members_with_avatars
-    ActiveRecord::Associations::Preloader.new(
-      records: [ self ],
-      associations: { team_memberships: { user: { avatar_attachment: :blob } } }
-    ).call
+    loaded_memberships = team_memberships.eager_load(user: { avatar_attachment: :blob }).to_a
+    association(:team_memberships).target = loaded_memberships
 
-    team_memberships
+    loaded_memberships
       .filter_map { |membership| membership.user if membership.user&.active? }
       .sort_by { |user| [ user.full_name.to_s, user.id ] }
   end

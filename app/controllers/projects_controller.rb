@@ -8,8 +8,7 @@ class ProjectsController < ApplicationController
         .ordered
         .to_a
       @team_memberships = current_team.team_memberships
-        .includes(user: { avatar_attachment: :blob })
-        .joins(:user)
+        .eager_load(user: { avatar_attachment: :blob })
         .merge(User.active.ordered_by_name)
         .to_a
 
@@ -89,7 +88,10 @@ class ProjectsController < ApplicationController
     @team_members = @project.team.active_members_with_avatars
     users_by_id = @team_members.index_by(&:id)
 
-    @meetings = @project.meetings.recent_first.to_a
+    @meetings = @project.meetings
+      .recent_first
+      .select(:id, :project_id, :host_id, :title, :room_code, :status, :started_at, :ended_at, :approved_at, :created_at)
+      .to_a
     @project.association(:meetings).target = @meetings
     meetings_by_id = @meetings.index_by(&:id)
 
@@ -105,7 +107,11 @@ class ProjectsController < ApplicationController
     @project.association(:tasks).target = all_tasks
     @tasks_by_column = all_tasks.group_by(&:column_status)
 
-    @activity_logs = @project.activity_logs.recent_first.limit(12).to_a
+    @activity_logs = @project.activity_logs
+      .select(:id, :project_id, :meeting_id, :summary, :created_at)
+      .recent_first
+      .limit(12)
+      .to_a
     preload_records_with_known_map(@activity_logs, :meeting_id, :meeting, meetings_by_id)
 
     @new_task = Task.new(project: @project, column_status: "todo", priority: "medium")

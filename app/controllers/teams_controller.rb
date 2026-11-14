@@ -119,8 +119,17 @@ class TeamsController < ApplicationController
         current_user.team_memberships.includes(:team).order(joined_at: :asc, id: :asc).to_a
       end
 
-      teams = memberships.filter_map(&:team)
-      ActiveRecord::Associations::Preloader.new(records: teams, associations: %i[team_memberships projects]).call if teams.any?
+      team_ids = memberships.filter_map(&:team_id).uniq
+      if team_ids.any?
+        @member_counts_by_team = TeamMembership.where(team_id: team_ids).group(:team_id).count
+        team_projects = Project.where(team_id: team_ids).ordered.select(:id, :name, :key, :status, :team_id, :created_at).to_a
+        @project_counts_by_team = team_projects.each_with_object(Hash.new(0)) { |project, counts| counts[project.team_id] += 1 }
+        @projects = current_team ? team_projects.select { |project| project.team_id == current_team.id } : []
+      else
+        @member_counts_by_team = {}
+        @project_counts_by_team = {}
+      end
+
       memberships
     end
 
