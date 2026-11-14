@@ -2,46 +2,49 @@
          draggable="true"
          data-kanban-target="card"
          data-task-id="<%= task.id %>"
+         data-assignee-id="<%= task.assignee_id %>"
          data-column="<%= task.column_status %>"
          data-move-url="<%= move_project_task_path(project, task) %>"
          data-action="dragstart->kanban#dragStart dragend->kanban#dragEnd"
-         class="group cursor-grab active:cursor-grabbing rounded-xl border p-3.5 shadow-2xs hover:shadow-xs transition <%= task_card_surface_class(task) %>">
-  <div class="flex items-start justify-between gap-2">
-    <span class="rounded-md bg-white/90 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-inset ring-slate-200/80"><%= task.code %></span>
-    <div class="flex items-center gap-1.5">
+         class="group cursor-grab active:cursor-grabbing rounded-[10px] border p-3 shadow-2xs transition <%= task_card_surface_class(task) %>">
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-1.5 min-w-0">
+      <span class="font-mono text-[11px] font-semibold text-on-surface-muted"><%= task.code %></span>
       <%= task_priority_badge(task.priority) %>
-      <%= link_to "Edit", edit_project_task_path(project, task), class: "rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-white/80 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" %>
     </div>
+
+    <%= link_to "Edit", edit_project_task_path(project, task),
+      class: "inline-flex min-h-11 sm:min-h-6 items-center rounded px-1.5 text-[11px] font-medium text-on-surface-muted hover:bg-hover hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0" %>
   </div>
 
-  <h4 class="mt-2 text-sm font-bold leading-snug text-slate-900"><%= task.title %></h4>
+  <h4 class="mt-2 font-display text-[14px] font-semibold leading-snug text-on-surface"><%= task.title %></h4>
 
   <% if task.description.present? %>
-    <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-600"><%= task.description %></p>
+    <p class="mt-1 line-clamp-1 text-[11px] text-on-surface-variant"><%= task.description %></p>
   <% end %>
 
-  <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-    <span class="inline-flex items-center rounded-md bg-white/80 px-2 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80"
-          title="Dibuat <%= format_date_id(task.created_at, include_time: true) %> WIB">
+  <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-on-surface-muted">
+    <span class="font-mono" title="Dibuat <%= format_date_id(task.created_at, include_time: true) %> WIB">
       Dibuat <%= format_date_id(task.created_at) %>
     </span>
     <% if task.source_meeting %>
       <%= link_to project_meeting_path(project, task.source_meeting),
         title: "Hasil ACC Rapat pada #{format_date_id(task.source_meeting.approved_at || task.created_at, include_time: true)} WIB",
-        class: "inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600" do %>
-        ACC Rapat <%= task.source_meeting.room_code %> · <%= format_date_id(task.source_meeting.approved_at || task.created_at) %>
+        class: "inline-flex min-h-9 sm:min-h-5 items-center gap-1 rounded border border-primary-border bg-primary-soft px-1.5 py-0.5 font-medium text-on-primary-soft hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
+        <%= material_icon("videocam", size: 11) %>
+        <span>ACC Rapat <%= task.source_meeting.room_code %></span>
       <% end %>
     <% end %>
   </div>
 
-  <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/70 pt-2.5">
+  <div class="mt-2.5 flex items-center justify-between gap-2 border-t border-outline-variant/60 pt-2">
     <% if task.assignee %>
-      <div class="flex items-center gap-1.5 min-w-0">
-        <%= user_avatar(task.assignee, size_class: "w-6 h-6", text_class: "text-[10px]", team: project.team) %>
-        <span class="truncate text-xs font-medium text-slate-700"><%= task.assignee.full_name %></span>
+      <div class="flex min-w-0 items-center gap-1.5">
+        <%= user_avatar(task.assignee, size_class: "w-5 h-5", text_class: "text-[9px]", team: project.team) %>
+        <span class="truncate text-[11px] font-medium text-on-surface-variant"><%= task.assignee.full_name %></span>
       </div>
     <% else %>
-      <span class="text-[11px] italic text-slate-600">Belum ada PIC</span>
+      <span class="text-[11px] text-on-surface-muted">Belum ada PIC</span>
     <% end %>
 
     <% if task.due_date %>
@@ -49,4 +52,3 @@
     <% end %>
   </div>
 </article>
-

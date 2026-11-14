@@ -173,9 +173,9 @@ class SyncboardFlowTest < ActionDispatch::IntegrationTest
 
     get project_path(project)
     assert_response :success
-    assert_select "article#task_#{overdue_task.id}.bg-rose-50\\/75.border-rose-200", text: /Terlewati/
-    assert_select "article#task_#{approaching_task.id}.bg-amber-50\\/75.border-amber-200", text: /Besok/
-    assert_select "article#task_#{done_overdue_task.id}.bg-white.border-slate-200"
+    assert_select "article#task_#{overdue_task.id}.bg-danger-soft.border-danger-border", text: /Terlewati/
+    assert_select "article#task_#{approaching_task.id}.bg-warning-soft.border-warning-border", text: /Besok/
+    assert_select "article#task_#{done_overdue_task.id}.bg-card.border-outline-variant"
 
     meeting = project.meetings.create!(host: @lead, title: "Planning Target", status: "summary_ready")
     target_due = Date.current + 4.days
@@ -240,5 +240,94 @@ class SyncboardFlowTest < ActionDispatch::IntegrationTest
     new_task = project.tasks.find_by!(title: "Ticket Baru Dari Meet Direvisi")
     assert_equal meeting.id, new_task.source_meeting_id
     assert_equal Date.current + 1.day, new_task.due_date
+  end
+
+  test "pengaturan tema default dan via cookie hanya tampil di profil saya" do
+    get new_session_path
+    assert_response :success
+    assert_select "html[data-theme-preference='light']"
+    assert_select "html.dark", count: 0
+    assert_select "button[data-action*='theme#']", count: 0
+    assert_select "button[data-theme-target='option']", count: 0
+
+    cookies[:syncboard_theme] = "dark"
+    get new_session_path
+    assert_response :success
+    assert_select "html.dark[data-theme-preference='dark']"
+    assert_select "button[data-action*='theme#']", count: 0
+
+    sign_in_as(@lead)
+    get root_path
+    assert_response :success
+    assert_select "html.dark[data-theme-preference='dark']"
+    assert_select "button[data-action*='theme#']", count: 0
+    assert_select "button[data-theme-target='option']", count: 0
+    assert_select "aside a[href='#{edit_profile_path}']"
+
+    cookies[:syncboard_theme] = "invalid_value"
+    get edit_profile_path
+    assert_response :success
+    assert_select "html[data-theme-preference='light']"
+    assert_select "html.dark", count: 0
+    assert_select "button[data-theme-target='option'][data-theme-mode='light']"
+    assert_select "button[data-theme-target='option'][data-theme-mode='dark']"
+    assert_select "button[data-theme-target='option'][data-theme-mode='system']"
+    assert_no_match(/Terra Light|Dark Terra/, response.body)
+  end
+
+  test "lead dapat menekan tombol done ketika seluruh tiket kanban sudah masuk ke kolom done" do
+    sign_in_as(@lead)
+    post projects_path, params: {
+      project: {
+        name: "Proyek Uji Selesai",
+        key: "DONE1",
+        description: "Verifikasi tombol Done oleh Lead"
+      }
+    }
+    project = Project.find_by!(key: "DONE1")
+
+    post project_tasks_path(project), params: {
+      task: {
+        title: "Tiket Pertama",
+        column_status: "todo",
+        priority: "medium"
+      }
+    }
+    task = project.tasks.find_by!(title: "Tiket Pertama")
+
+    get project_path(project)
+    assert_response :success
+    assert_select "div#completion_banner_project_#{project.id}.hidden"
+
+    patch complete_project_path(project)
+    assert_redirected_to project_path(project)
+    assert_equal "active", project.reload.status
+
+    patch move_project_task_path(project, task),
+      params: { column_status: "done", position: 1 },
+      as: :json
+    assert_response :success
+
+    sign_in_as(@member)
+    patch complete_project_path(project)
+    assert_redirected_to project_path(project)
+    assert_equal "active", project.reload.status
+
+    sign_in_as(@lead)
+    get project_path(project)
+    assert_response :success
+    assert_select "div#completion_banner_project_#{project.id}:not(.hidden) form[action='#{complete_project_path(project)}']"
+
+    patch complete_project_path(project)
+    assert_redirected_to project_path(project)
+    assert_equal "completed", project.reload.status
+
+    get project_path(project)
+    assert_response :success
+    assert_select "div#completion_banner_project_#{project.id}", text: /Proyek Selesai/
+
+    get root_path
+    assert_response :success
+    assert_match(/Selesai/, response.body)
   end
 end

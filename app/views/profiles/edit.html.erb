@@ -1,62 +1,67 @@
-<% content_for :title, "Profil Saya — SyncBoard" %>
-<% content_for :page_title, "Pengaturan Profil Anggota" %>
+<% content_for :title, "Profil Saya | SyncBoard" %>
+<% content_for :page_title, "Profil & Pengaturan Tema" %>
 
-<div class="mx-auto max-w-3xl">
-  <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-    <%= form_with model: @user, url: profile_path, method: :patch, class: "space-y-6" do |form| %>
+<div class="mx-auto max-w-3xl space-y-6">
+  <div class="rounded-[12px] border border-outline-variant bg-panel p-6 sm:p-7 shadow-2xs">
+    <%= form_with model: @user, url: profile_path, method: :patch, class: "space-y-5" do |form| %>
       <%= render "shared/form_errors", record: @user %>
 
-      <div class="flex flex-col sm:flex-row sm:items-center gap-5 pb-6 border-b border-slate-100">
-        <%= user_avatar(@user, size_class: "w-20 h-20", text_class: "text-2xl") %>
-        <div class="space-y-2 flex-1">
+      <div class="flex flex-col gap-4 border-b border-outline-variant pb-5 sm:flex-row sm:items-center">
+        <%= user_avatar(@user, size_class: "w-14 h-14", text_class: "text-lg") %>
+        <div class="flex-1 space-y-2">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700"><%= @user.employee_code %></span>
-            <span class="rounded-md bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700"><%= @user.role_label %></span>
+            <span class="rounded-md border border-outline-variant bg-inset px-2 py-0.5 font-mono text-[11px] font-semibold text-on-surface"><%= @user.employee_code %></span>
+            <span class="rounded-md border border-outline-variant bg-inset px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant"><%= @user.role_label %></span>
           </div>
-          <%= form.label :avatar, "Foto Profil (PNG, JPG, WebP, GIF · Maks 2 MB)", class: "block text-sm font-semibold text-slate-800" %>
+          <%= form.label :avatar, "Foto Profil (PNG/JPG/WebP · Maks 2 MB)", class: ui_label_class("text-xs") %>
           <%= form.file_field :avatar,
             accept: "image/png,image/jpeg,image/webp,image/gif",
-            class: "block w-full text-xs text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3.5 file:py-2 file:text-xs file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" %>
+            class: "block w-full cursor-pointer text-xs text-on-surface-variant file:mr-3 file:min-h-11 sm:file:min-h-9 file:cursor-pointer file:rounded-[10px] file:border file:border-outline-variant file:bg-card file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-on-surface hover:file:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" %>
 
           <% if @user.avatar.attached? %>
-            <label class="inline-flex items-center gap-2 text-xs text-rose-600 cursor-pointer pt-1">
-              <%= check_box_tag :remove_avatar, "1", false, class: "rounded border-slate-300 text-rose-600 focus:ring-rose-500" %>
+            <label class="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-medium text-on-danger-soft">
+              <%= check_box_tag :remove_avatar, "1", false, class: "h-4 w-4 rounded border-outline bg-input accent-danger focus:ring-danger" %>
               <span>Hapus foto profil saat ini</span>
             </label>
           <% end %>
         </div>
       </div>
 
-      <div class="grid gap-5 sm:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-2">
         <div>
-          <%= form.label :full_name, "Nama Lengkap", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.text_field :full_name, required: true,
-            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          <%= form.label :full_name, "Nama Lengkap", class: ui_label_class("text-xs") %>
+          <%= form.text_field :full_name, required: true, class: ui_input_class("mt-1.5 rounded-[12px]") %>
         </div>
 
         <div>
-          <%= form.label :phone, "Nomor Telepon / WhatsApp", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.text_field :phone, placeholder: "0812-xxxx-xxxx",
-            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          <%= form.label :phone, "Nomor Telepon / WhatsApp", class: ui_label_class("text-xs") %>
+          <%= form.text_field :phone, placeholder: "0812-xxxx-xxxx", class: ui_input_class("mt-1.5 rounded-[12px]") %>
         </div>
 
         <div>
-          <%= form.label :department, "Divisi", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.select :department, User::DEPARTMENTS, {},
-            class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          <%= form.label :department, "Divisi", class: ui_label_class("text-xs") %>
+          <%= form.select :department, User::DEPARTMENTS, {}, class: ui_input_class("mt-1.5 rounded-[12px]") %>
         </div>
 
         <div>
-          <%= form.label :job_title, "Jabatan", class: "block text-sm font-medium text-slate-700" %>
-          <%= form.text_field :job_title, required: true,
-            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          <%= form.label :job_title, "Jabatan", class: ui_label_class("text-xs") %>
+          <%= form.text_field :job_title, required: true, class: ui_input_class("mt-1.5 rounded-[12px]") %>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-        <%= link_to "Kembali ke Workspace", root_path, class: "rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100" %>
-        <%= form.submit "Simpan Perubahan", class: "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+      <div class="flex flex-wrap items-center justify-end gap-3 border-t border-outline-variant pt-4">
+        <%= link_to "Kembali ke Workspace", root_path, class: ui_btn_secondary_class("px-4 py-2 text-xs rounded-[10px]") %>
+        <%= form.submit "Simpan Perubahan", class: ui_btn_primary_class("px-5 py-2 text-xs rounded-[10px]") %>
       </div>
     <% end %>
+  </div>
+
+  <div class="rounded-[12px] border border-outline-variant bg-panel p-6 sm:p-7 shadow-2xs space-y-4">
+    <div>
+      <h2 class="font-display text-base font-semibold text-on-surface">Preferensi Tampilan</h2>
+      <p class="mt-0.5 text-xs text-on-surface-variant">Pilih tampilan terang, gelap, atau ikuti preferensi sistem perangkat Anda.</p>
+    </div>
+
+    <%= render "shared/theme_setting", variant: :segmented %>
   </div>
 </div>

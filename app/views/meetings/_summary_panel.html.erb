@@ -1,73 +1,72 @@
-<div id="<%= dom_id(meeting, :summary_panel) %>" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-    <div>
-      <h3 class="text-sm font-bold text-slate-900">Rangkuman & Usulan Perubahan Kanban</h3>
-      <p class="text-xs text-slate-600">Review keputusan rapat sebelum Team Lead menekan ACC.</p>
+<div id="<%= dom_id(meeting, :summary_panel) %>" class="space-y-4">
+  <div class="flex items-start justify-between gap-2 border-b border-outline-variant pb-3">
+    <div class="flex items-center gap-2 min-w-0">
+      <%= material_icon("auto_awesome", size: 18, extra_class: "text-primary-text") %>
+      <h3 class="font-display text-sm font-semibold text-on-surface leading-snug">Rangkuman &amp; Usulan Perubahan Kanban</h3>
     </div>
-    <%= meeting_status_badge(meeting) %>
+    <div class="shrink-0"><%= meeting_status_badge(meeting) %></div>
   </div>
 
   <% if meeting.rejection_reason.present? %>
-    <div class="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-800">
-      <p class="font-bold">Alasan Penolakan:</p>
-      <p class="mt-0.5"><%= meeting.rejection_reason %></p>
+    <div class="rounded-[10px] border border-danger-border bg-danger-soft px-3 py-2 text-xs text-on-danger-soft">
+      <p class="font-semibold">Ditolak: <%= meeting.rejection_reason %></p>
     </div>
   <% end %>
 
   <% if meeting.approved? && meeting.approved_by %>
-    <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs text-emerald-900">
-      <div>
-        <span class="font-bold">Disetujui (ACC) oleh <%= meeting.approved_by.full_name %></span>
-        <span class="text-emerald-800"> pada <%= format_date_id(meeting.approved_at, include_time: true) %> WIB</span>
-      </div>
-      <%= link_to "Lihat Perubahan di Kanban", project_path(project), class: "font-bold text-emerald-800 underline hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded" %>
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-primary-border bg-primary-soft px-3 py-2 text-xs text-on-primary-soft">
+      <span>
+        <strong class="font-semibold">ACC <%= meeting.approved_by.full_name %></strong>
+        <span class="font-mono text-[11px]"> · <%= format_date_id(meeting.approved_at, include_time: true) %></span>
+      </span>
+      <%= link_to "Lihat Kanban", project_path(project), class: "font-semibold underline underline-offset-4 hover:text-on-surface" %>
     </div>
   <% end %>
 
   <% if meeting.summary_text.present? %>
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-relaxed text-slate-700 whitespace-pre-line font-sans"><%= meeting.summary_text %></div>
+    <div class="rounded-[10px] border border-outline-variant bg-inset p-3 text-xs leading-relaxed text-on-surface whitespace-pre-line font-sans"><%= meeting.summary_text %></div>
   <% else %>
-    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center text-xs text-slate-600">
-      Belum ada rangkuman. Tulis catatan di sebelah kiri lalu klik <strong>Generate Rangkuman & Usulan Kanban</strong>.
+    <div class="rounded-[10px] border border-dashed border-outline-variant bg-inset/60 p-4 text-center text-xs text-on-surface-muted">
+      Belum ada rangkuman. Buka tab <strong class="text-on-surface">Transcript</strong> lalu klik Generate.
     </div>
   <% end %>
 
   <% items = meeting.meeting_action_items %>
   <% if items.any? %>
-    <div class="space-y-2.5">
+    <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
-          Daftar Aksi Kanban (<%= items.count(&:selected?) %>/<%= items.size %> dipilih)
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-muted">
+          Daftar Aksi (<span class="font-mono"><%= items.count(&:selected?) %>/<%= items.size %></span>)
         </p>
       </div>
 
       <div class="space-y-2">
         <% items.each do |item| %>
-          <div class="rounded-xl border <%= item.applied? ? 'border-emerald-200 bg-emerald-50/50' : (item.selected? ? 'border-indigo-200 bg-indigo-50/35' : 'border-slate-200 bg-slate-50') %> p-3 text-xs">
-            <div class="flex items-start justify-between gap-3">
+          <div class="rounded-[10px] border <%= item.applied? ? 'border-primary-border bg-primary-soft' : (item.selected? ? 'border-outline-variant bg-card' : 'border-outline-variant/60 bg-inset/70 opacity-80') %> p-3 text-xs transition">
+            <div class="flex items-start justify-between gap-2.5">
               <div class="min-w-0 flex-1 space-y-1">
-                <div class="flex flex-wrap items-center gap-1.5">
+                <div class="flex flex-wrap items-center gap-1">
                   <%= action_mode_badge(item) %>
                   <%= action_type_badge(item.action_type) %>
                   <%= task_column_badge(item.target_column) %>
                   <%= task_priority_badge(item.priority) %>
                   <% if item.target_task %>
-                    <span class="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-800 ring-1 ring-inset ring-slate-200">
-                      <%= item.target_task.code %>: <%= item.target_task.title.truncate(30) %>
+                    <span class="rounded border border-outline-variant bg-inset px-1.5 py-0.5 font-mono text-[10px] font-semibold text-on-surface">
+                      <%= item.target_task.code %>
                     </span>
                   <% end %>
                 </div>
-                <p class="font-bold text-slate-900"><%= item.title %></p>
+                <p class="font-semibold text-on-surface"><%= item.title %></p>
                 <% if item.description.present? %>
-                  <p class="text-[11px] text-slate-600 line-clamp-2"><%= item.description %></p>
+                  <p class="line-clamp-2 text-[11px] text-on-surface-variant"><%= item.description %></p>
                 <% end %>
                 <% if item.assignee || item.due_date %>
-                  <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-600">
+                  <div class="flex flex-wrap items-center gap-x-2.5 text-[11px] text-on-surface-muted">
                     <% if item.assignee %>
-                      <span>PIC: <span class="font-semibold text-slate-800"><%= item.assignee.full_name %></span></span>
+                      <span>PIC: <strong class="text-on-surface"><%= item.assignee.full_name %></strong></span>
                     <% end %>
                     <% if item.due_date %>
-                      <span>Target: <span class="font-semibold text-slate-800"><%= format_date_id(item.due_date) %></span></span>
+                      <span class="font-mono"><%= format_date_id(item.due_date) %></span>
                     <% end %>
                   </div>
                 <% end %>
@@ -75,27 +74,27 @@
 
               <div class="shrink-0">
                 <% if item.applied? %>
-                  <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-900">
+                  <span class="inline-flex items-center rounded border border-primary-border bg-card px-2 py-0.5 text-[10px] font-semibold text-on-primary-soft">
                     Diterapkan
                   </span>
                 <% else %>
                   <%= button_to toggle_item_project_meeting_path(project, meeting, item_id: item.id),
                     method: :patch,
-                    class: "lead-only rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 #{item.selected? ? 'border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}" do %>
+                    class: "lead-only inline-flex min-h-11 sm:min-h-7 items-center rounded-[7px] border px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary #{item.selected? ? 'border-primary bg-primary text-on-primary hover:bg-primary-hover' : 'border-outline bg-card text-on-surface-variant hover:bg-hover'}" do %>
                     <%= item.selected? ? "Dipilih" : "Lewati" %>
                   <% end %>
 
-                  <span class="member-only inline-flex items-center rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                    <%= item.selected? ? "Siap ACC" : "Dilewati" %>
+                  <span class="member-only inline-flex items-center rounded border border-outline-variant bg-inset px-2 py-0.5 text-[10px] font-medium text-on-surface-muted">
+                    <%= item.selected? ? "Siap ACC" : "Lewati" %>
                   </span>
                 <% end %>
               </div>
             </div>
 
             <% unless meeting.approved? || item.applied? %>
-              <details class="lead-only mt-2.5 border-t border-slate-200/80 pt-2">
-                <summary class="cursor-pointer rounded text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
-                  Ubah Mode / Detail Usulan
+              <details class="lead-only mt-2 border-t border-outline-variant/60 pt-2">
+                <summary class="inline-flex min-h-11 sm:min-h-6 cursor-pointer items-center rounded text-[11px] font-medium text-primary-text hover:underline">
+                  Ubah Detail
                 </summary>
                 <%= render "meetings/action_item_form",
                   url: update_action_item_project_meeting_path(project, meeting, item_id: item.id),
@@ -103,7 +102,7 @@
                   item: item,
                   project_tasks: project_tasks,
                   team_members: team_members,
-                  submit_label: "Simpan Perubahan" %>
+                  submit_label: "Simpan" %>
               </details>
             <% end %>
           </div>
@@ -113,10 +112,10 @@
   <% end %>
 
   <% unless meeting.approved? %>
-    <!-- Tambah Usulan Manual oleh Lead / Host -->
-    <details class="lead-only rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-      <summary class="cursor-pointer rounded font-semibold text-slate-700 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
-        Tambah Usulan Aksi Kanban Manual
+    <details class="lead-only rounded-[10px] border border-outline-variant bg-inset p-3 text-xs">
+      <summary class="inline-flex min-h-11 sm:min-h-6 cursor-pointer items-center gap-1 font-medium text-on-surface hover:text-primary-text">
+        <%= material_icon("add", size: 15) %>
+        <span>Tambah Usulan Manual</span>
       </summary>
       <%= render "meetings/action_item_form",
         url: add_action_item_project_meeting_path(project, meeting),
@@ -124,32 +123,29 @@
         item: MeetingActionItem.new,
         project_tasks: project_tasks,
         team_members: team_members,
-        submit_label: "Tambahkan ke Usulan" %>
+        submit_label: "Tambahkan" %>
     </details>
   <% end %>
 
   <% if meeting.meeting_action_items.where(selected: true, applied: false).exists? || meeting.summary_ready? %>
-    <div class="border-t border-slate-100 pt-4">
-      <div class="lead-only space-y-2.5">
-        <div class="flex flex-wrap items-center gap-2">
-          <%= button_to "ACC & Terapkan ke Kanban", approve_project_meeting_path(project, meeting),
-            method: :post,
-            class: "flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition cursor-pointer" %>
-        </div>
+    <div class="sticky bottom-0 border-t border-outline-variant bg-panel pt-3 pb-1">
+      <div class="lead-only space-y-2">
+        <%= button_to "ACC & Terapkan ke Kanban", approve_project_meeting_path(project, meeting),
+          method: :post,
+          class: ui_btn_primary_class("w-full py-2.5 text-xs rounded-[10px]") %>
 
-        <%= form_with url: reject_project_meeting_path(project, meeting), method: :post, class: "flex gap-2" do %>
+        <%= form_with url: reject_project_meeting_path(project, meeting), method: :post, class: "flex gap-1.5" do %>
           <%= text_field_tag :rejection_reason, nil,
-            placeholder: "Alasan jika ditolak (opsional)...",
+            placeholder: "Alasan tolak (opsional)...",
             aria: { label: "Alasan penolakan" },
-            class: "min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20" %>
-          <%= submit_tag "Tolak", class: "rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer" %>
+            class: "min-h-11 sm:min-h-8 min-w-0 flex-1 rounded-[10px] border border-outline-variant bg-input px-2.5 py-1.5 text-xs text-on-surface placeholder:text-on-surface-muted focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/25" %>
+          <%= submit_tag "Tolak", class: ui_btn_danger_class("min-h-11 sm:min-h-8 px-3 py-1.5 text-xs rounded-[10px] shrink-0") %>
         <% end %>
       </div>
 
-      <div class="member-only rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs text-amber-900">
-        Menunggu persetujuan (<strong>ACC</strong>) dari <strong>Team Lead</strong> untuk langsung memperbarui Kanban Board.
+      <div class="member-only rounded-[10px] border border-warning-border bg-warning-soft px-3 py-2 text-xs text-on-warning-soft">
+        Menunggu <strong>ACC Team Lead</strong> untuk memperbarui Kanban.
       </div>
     </div>
   <% end %>
 </div>
-

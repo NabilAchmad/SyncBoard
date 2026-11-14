@@ -1,5 +1,15 @@
 module ApplicationHelper
   MONTHS_ID = %w[Jan Feb Mar Apr Mei Jun Jul Agu Sep Okt Nov Des].freeze
+  VALID_THEMES = %w[light dark system].freeze
+
+  def theme_preference
+    pref = cookies[:syncboard_theme].to_s
+    VALID_THEMES.include?(pref) ? pref : "light"
+  end
+
+  def theme_html_class
+    theme_preference == "dark" ? "dark" : nil
+  end
 
   def format_date_id(value, include_time: false)
     return nil if value.blank?
@@ -9,14 +19,38 @@ module ApplicationHelper
     include_time ? "#{formatted} #{local.strftime('%H:%M')}" : formatted
   end
 
+  def ui_card_class(extra = nil)
+    "rounded-xl border border-outline-variant bg-panel text-on-surface shadow-xs #{extra}".strip
+  end
+
+  def ui_label_class(extra = nil)
+    "block text-xs font-semibold text-on-surface #{extra}".strip
+  end
+
+  def ui_input_class(extra = nil)
+    "block w-full min-h-[42px] rounded-xl border border-outline bg-input px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition #{extra}".strip
+  end
+
+  def ui_btn_primary_class(extra = nil)
+    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-primary shadow-xs hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas transition cursor-pointer #{extra}".strip
+  end
+
+  def ui_btn_secondary_class(extra = nil)
+    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-outline bg-panel px-3.5 py-2 text-xs font-semibold text-on-surface hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas transition cursor-pointer #{extra}".strip
+  end
+
+  def ui_btn_danger_class(extra = nil)
+    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-danger-border bg-danger-soft px-3 py-1.5 text-xs font-semibold text-on-danger-soft hover:bg-danger hover:text-on-danger hover:border-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger focus-visible:ring-offset-2 focus-visible:ring-offset-canvas transition cursor-pointer #{extra}".strip
+  end
+
   def task_card_surface_class(task)
     case task.due_status
     when :overdue
-      "border-rose-200 bg-rose-50/75 hover:border-rose-300"
+      "border-danger-border bg-danger-soft"
     when :approaching
-      "border-amber-200 bg-amber-50/75 hover:border-amber-300"
+      "border-warning-border bg-warning-soft"
     else
-      "border-slate-200 bg-white hover:border-indigo-300"
+      "border-outline-variant bg-card hover:border-outline"
     end
   end
 
@@ -31,7 +65,7 @@ module ApplicationHelper
       content_tag(
         :span,
         "Target #{date_text} · Terlewati",
-        class: "inline-flex items-center gap-1 rounded-md bg-rose-100/80 px-2 py-0.5 text-[10px] font-semibold text-rose-800"
+        class: "inline-flex items-center rounded-md border border-danger-border bg-card px-2 py-0.5 font-mono text-[11px] font-semibold text-on-danger-soft"
       )
     when :approaching
       hint = case days_left
@@ -42,13 +76,13 @@ module ApplicationHelper
       content_tag(
         :span,
         "Target #{date_text} · #{hint}",
-        class: "inline-flex items-center gap-1 rounded-md bg-amber-100/80 px-2 py-0.5 text-[10px] font-semibold text-amber-900"
+        class: "inline-flex items-center rounded-md border border-warning-border bg-card px-2 py-0.5 font-mono text-[11px] font-semibold text-on-warning-soft"
       )
     else
       content_tag(
         :span,
         "Target #{date_text}",
-        class: "text-[11px] font-medium text-slate-700"
+        class: "font-mono text-[11px] font-medium text-on-surface-muted"
       )
     end
   end
@@ -56,10 +90,10 @@ module ApplicationHelper
   def action_mode_badge(item)
     if item.creates_new_task?
       content_tag(:span, "Buat Ticket Baru",
-        class: "inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-800 ring-1 ring-inset ring-indigo-600/20")
+        class: "inline-flex items-center rounded-md border border-outline-variant bg-inset px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant")
     else
       content_tag(:span, "Update Ticket Ada",
-        class: "inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900 ring-1 ring-inset ring-amber-600/20")
+        class: "inline-flex items-center rounded-md border border-warning-border bg-warning-soft px-2 py-0.5 text-[11px] font-semibold text-on-warning-soft")
     end
   end
 
@@ -69,7 +103,7 @@ module ApplicationHelper
     if user.avatar.attached?
       image_tag user.avatar,
         alt: user.full_name,
-        class: "#{size_class} rounded-full object-cover ring-2 ring-slate-200/80 shrink-0"
+        class: "#{size_class} rounded-xl border border-outline-variant object-cover shrink-0"
     else
       resolved_team = team || (respond_to?(:current_team) ? current_team : nil)
       is_lead = if !lead.nil?
@@ -79,69 +113,81 @@ module ApplicationHelper
       else
         user.lead?
       end
-      bg_class = is_lead ? "bg-indigo-600 text-white" : "bg-sky-600 text-white"
+      bg_class = is_lead ? "border-primary-border bg-primary-soft text-on-primary-soft" : "border-outline-variant bg-inset text-on-surface-variant"
       content_tag(
         :div,
         user.initials,
-        class: "#{size_class} #{bg_class} rounded-full flex items-center justify-center font-bold #{text_class} shrink-0 select-none"
+        class: "#{size_class} #{bg_class} flex items-center justify-center rounded-xl border font-semibold #{text_class} shrink-0 select-none"
       )
     end
   end
 
+  def material_icon(name, size: 18, extra_class: "", filled: false)
+    style = "font-size: #{size}px;"
+    style = "#{style} font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;" if filled
+    content_tag(
+      :span,
+      name,
+      class: "material-symbols-outlined shrink-0 leading-none select-none #{extra_class}".strip,
+      style: style,
+      aria: { hidden: true }
+    )
+  end
+
   def sidebar_link_class(path)
-    base = "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition"
+    base = "flex min-h-11 sm:min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 py-2 sm:py-1.5 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     if current_page?(path)
-      "#{base} bg-indigo-600 text-white shadow-xs"
+      "#{base} border border-outline-variant/80 bg-card text-primary-text font-semibold shadow-2xs"
     else
-      "#{base} text-slate-300 hover:bg-slate-800 hover:text-white"
+      "#{base} border border-transparent text-on-surface-variant hover:bg-hover hover:text-on-surface"
     end
   end
 
   def task_priority_badge(priority)
     value = priority.respond_to?(:priority) ? priority.priority : priority.to_s
     styles = {
-      "urgent" => "bg-rose-50 text-rose-700 ring-rose-600/20",
-      "high" => "bg-amber-50 text-amber-700 ring-amber-600/20",
-      "medium" => "bg-sky-50 text-sky-700 ring-sky-600/20",
-      "low" => "bg-slate-100 text-slate-600 ring-slate-500/20"
+      "urgent" => "border-danger-border bg-danger-soft text-on-danger-soft",
+      "high" => "border-warning-border bg-warning-soft text-on-warning-soft",
+      "medium" => "border-primary-border bg-primary-soft text-on-primary-soft",
+      "low" => "border-outline-variant bg-inset text-on-surface-muted"
     }
     label = Task::PRIORITIES.fetch(value, value.humanize)
-    content_tag(:span, label, class: "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset #{styles.fetch(value, styles['medium'])}")
+    content_tag(:span, label, class: "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold #{styles.fetch(value, styles['medium'])}")
   end
 
   def task_column_badge(column_key)
     key = column_key.to_s
     styles = {
-      "todo" => "bg-slate-100 text-slate-700 ring-slate-500/20",
-      "in_progress" => "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
-      "review" => "bg-amber-50 text-amber-700 ring-amber-600/20",
-      "done" => "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+      "todo" => "border-outline-variant bg-inset text-on-surface-variant",
+      "in_progress" => "border-outline bg-card text-on-surface",
+      "review" => "border-warning-border bg-warning-soft text-on-warning-soft",
+      "done" => "border-primary-border bg-primary-soft text-on-primary-soft"
     }
     label = Task::COLUMNS.fetch(key, key.humanize)
-    content_tag(:span, label, class: "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset #{styles.fetch(key, styles['todo'])}")
+    content_tag(:span, label, class: "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold #{styles.fetch(key, styles['todo'])}")
   end
 
   def meeting_status_badge(meeting)
     styles = {
-      "live" => "bg-rose-50 text-rose-700 ring-rose-600/20",
-      "ended" => "bg-slate-100 text-slate-700 ring-slate-500/20",
-      "summary_ready" => "bg-amber-50 text-amber-700 ring-amber-600/20",
-      "approved" => "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-      "rejected" => "bg-slate-100 text-slate-700 ring-slate-500/20"
+      "live" => "border-danger-border bg-danger-soft text-on-danger-soft",
+      "ended" => "border-outline-variant bg-inset text-on-surface-variant",
+      "summary_ready" => "border-warning-border bg-warning-soft text-on-warning-soft",
+      "approved" => "border-primary-border bg-primary-soft text-on-primary-soft",
+      "rejected" => "border-danger-border bg-danger-soft text-on-danger-soft"
     }
-    badge_class = styles.fetch(meeting.status, "bg-slate-100 text-slate-700 ring-slate-500/20")
-    content_tag(:span, meeting.status_label, class: "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset #{badge_class}")
+    badge_class = styles.fetch(meeting.status, "border-outline-variant bg-inset text-on-surface-variant")
+    content_tag(:span, meeting.status_label, class: "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold #{badge_class}")
   end
 
   def action_type_badge(action_type)
     styles = {
-      "create_task" => "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
-      "move_task" => "bg-sky-50 text-sky-700 ring-sky-600/20",
-      "update_task" => "bg-violet-50 text-violet-700 ring-violet-600/20",
-      "complete_task" => "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+      "create_task" => "border-outline-variant bg-inset text-on-surface-variant",
+      "move_task" => "border-outline-variant bg-column text-on-surface-variant",
+      "update_task" => "border-outline bg-card text-on-surface",
+      "complete_task" => "border-primary-border bg-primary-soft text-on-primary-soft"
     }
     label = MeetingActionItem::ACTION_TYPES.fetch(action_type, action_type.humanize)
-    content_tag(:span, label, class: "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset #{styles.fetch(action_type, styles['create_task'])}")
+    content_tag(:span, label, class: "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold #{styles.fetch(action_type, styles['create_task'])}")
   end
 
   def greeting_text

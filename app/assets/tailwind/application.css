@@ -1,5 +1,170 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * SyncBoard Terra Design System
+ * Light default: Terra Light (#faf6f0 archival canvas, #4a7c59 forest sage CTA)
+ * Dark variant:  Dark Terra (#0b1326 slate canvas, #22c55e emerald CTA)
+ */
+@theme inline {
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Literata", Georgia, Cambria, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-canvas: var(--sb-canvas);
+  --color-sidebar: var(--sb-sidebar);
+  --color-panel: var(--sb-panel);
+  --color-column: var(--sb-column);
+  --color-card: var(--sb-card);
+  --color-inset: var(--sb-inset);
+  --color-input: var(--sb-input);
+  --color-hover: var(--sb-hover);
+
+  --color-on-surface: var(--sb-on-surface);
+  --color-on-surface-variant: var(--sb-on-surface-variant);
+  --color-on-surface-muted: var(--sb-on-surface-muted);
+
+  --color-primary: var(--sb-primary);
+  --color-primary-hover: var(--sb-primary-hover);
+  --color-primary-text: var(--sb-primary-text);
+  --color-on-primary: var(--sb-on-primary);
+  --color-primary-soft: var(--sb-primary-soft);
+  --color-on-primary-soft: var(--sb-on-primary-soft);
+  --color-primary-border: var(--sb-primary-border);
+
+  --color-secondary-soft: var(--sb-secondary-soft);
+  --color-on-secondary-soft: var(--sb-on-secondary-soft);
+
+  --color-warning: var(--sb-warning);
+  --color-warning-soft: var(--sb-warning-soft);
+  --color-on-warning-soft: var(--sb-on-warning-soft);
+  --color-warning-border: var(--sb-warning-border);
+
+  --color-danger: var(--sb-danger);
+  --color-danger-hover: var(--sb-danger-hover);
+  --color-on-danger: var(--sb-on-danger);
+  --color-danger-soft: var(--sb-danger-soft);
+  --color-on-danger-soft: var(--sb-on-danger-soft);
+  --color-danger-border: var(--sb-danger-border);
+
+  --color-outline: var(--sb-outline);
+  --color-outline-variant: var(--sb-outline-variant);
+
+  --color-lead-badge: var(--sb-lead-badge);
+  --color-on-lead-badge: var(--sb-on-lead-badge);
+
+  --color-inverse-surface: var(--sb-inverse-surface);
+  --color-inverse-on-surface: var(--sb-inverse-on-surface);
+}
+
+:root {
+  color-scheme: light;
+
+  --sb-canvas: #faf6f0;
+  --sb-sidebar: #faf6f0;
+  --sb-panel: #ffffff;
+  --sb-column: #f5f1ea;
+  --sb-card: #ffffff;
+  --sb-inset: #f0ece4;
+  --sb-input: #ffffff;
+  --sb-hover: #eae6de;
+
+  --sb-on-surface: #2e3230;
+  --sb-on-surface-variant: #4a4e4a;
+  --sb-on-surface-muted: #5b6057;
+
+  --sb-primary: #4a7c59;
+  --sb-primary-hover: #3b6347;
+  --sb-primary-text: #3b6347;
+  --sb-on-primary: #ffffff;
+  --sb-primary-soft: #d8f0de;
+  --sb-on-primary-soft: #173822;
+  --sb-primary-border: #8dc49d;
+
+  --sb-secondary-soft: #f0e8db;
+  --sb-on-secondary-soft: #4a4538;
+
+  --sb-warning: #705c30;
+  --sb-warning-soft: #fbf0d9;
+  --sb-on-warning-soft: #554020;
+  --sb-warning-border: #c4a66a;
+
+  --sb-danger: #b83230;
+  --sb-danger-hover: #992624;
+  --sb-on-danger: #ffffff;
+  --sb-danger-soft: #fcebea;
+  --sb-on-danger-soft: #7f1d1d;
+  --sb-danger-border: #e09f9c;
+
+  --sb-outline: #7c8176;
+  --sb-outline-variant: #d4d6cb;
+
+  --sb-lead-badge: #2e3230;
+  --sb-on-lead-badge: #faf6f0;
+
+  --sb-inverse-surface: #2e3230;
+  --sb-inverse-on-surface: #f5f0e8;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --sb-canvas: #0b1326;
+  --sb-sidebar: #0f172a;
+  --sb-panel: #131b2e;
+  --sb-column: #10192d;
+  --sb-card: #1b2438;
+  --sb-inset: #182236;
+  --sb-input: #0f172a;
+  --sb-hover: #1e293b;
+
+  --sb-on-surface: #f8fafc;
+  --sb-on-surface-variant: #cbd5e1;
+  --sb-on-surface-muted: #94a3b8;
+
+  --sb-primary: #22c55e;
+  --sb-primary-hover: #4ade80;
+  --sb-primary-text: #4ade80;
+  --sb-on-primary: #052e16;
+  --sb-primary-soft: #182822;
+  --sb-on-primary-soft: #86efac;
+  --sb-primary-border: #25573a;
+
+  --sb-secondary-soft: #1e293b;
+  --sb-on-secondary-soft: #cbd5e1;
+
+  --sb-warning: #facc15;
+  --sb-warning-soft: #282012;
+  --sb-on-warning-soft: #fde047;
+  --sb-warning-border: #854d0e;
+
+  --sb-danger: #dc2626;
+  --sb-danger-hover: #b91c1c;
+  --sb-on-danger: #ffffff;
+  --sb-danger-soft: #2b161b;
+  --sb-on-danger-soft: #fca5a5;
+  --sb-danger-border: #7f1d1d;
+
+  --sb-outline: #64748b;
+  --sb-outline-variant: #243048;
+
+  --sb-lead-badge: #182822;
+  --sb-on-lead-badge: #86efac;
+
+  --sb-inverse-surface: #060e20;
+  --sb-inverse-on-surface: #f8fafc;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Stateless role visibility so Turbo Stream broadcasts work identically for all connected clients */
 body[data-user-role="member"] .lead-only {
   display: none !important;
@@ -7,4 +172,18 @@ body[data-user-role="member"] .lead-only {
 
 body[data-user-role="lead"] .member-only {
   display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
+  line-height: 1;
+  vertical-align: middle;
 }

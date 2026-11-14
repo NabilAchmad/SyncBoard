@@ -35,7 +35,9 @@ port ENV.fetch("PORT", 3000)
 plugin :tmp_restart
 
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
-if ENV["SOLID_QUEUE_IN_PUMA"] == "true" || (ENV["RAILS_ENV"] == "production" && ENV["SOLID_QUEUE_IN_PUMA"] != "false")
+# Skip when Process.fork is unavailable (e.g., native Windows Ruby) to avoid NotImplementedError.
+solid_queue_requested = ENV["SOLID_QUEUE_IN_PUMA"] == "true" || (ENV["RAILS_ENV"] == "production" && ENV["SOLID_QUEUE_IN_PUMA"] != "false")
+if solid_queue_requested && Process.respond_to?(:fork)
   plugin :solid_queue
 end
 

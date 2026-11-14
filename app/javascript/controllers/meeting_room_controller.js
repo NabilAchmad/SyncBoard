@@ -27,7 +27,9 @@ export default class extends Controller {
     "liveCaptions",
     "quickCaptionInput",
     "messageForm",
-    "messageBody"
+    "messageBody",
+    "rightTab",
+    "rightPanel"
   ]
 
   static values = {
@@ -174,11 +176,11 @@ export default class extends Controller {
     if (!this.hasLocalStatusTarget) return
     this.localStatusTarget.textContent = text
     const tones = {
-      emerald: "bg-emerald-500/20 text-emerald-200 border-emerald-500/40",
-      amber: "bg-amber-500/20 text-amber-200 border-amber-500/40",
-      slate: "bg-slate-700/80 text-slate-200 border-slate-600"
+      emerald: "border-primary-border bg-primary-soft text-on-primary-soft",
+      amber: "border-warning-border bg-warning-soft text-on-warning-soft",
+      slate: "border-outline-variant bg-inset text-on-surface-variant"
     }
-    this.localStatusTarget.className = `inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${tones[tone] || tones.slate}`
+    this.localStatusTarget.className = `inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-medium ${tones[tone] || tones.slate}`
   }
 
   subscribeToRoom() {
@@ -220,7 +222,7 @@ export default class extends Controller {
         break
       case "call_ended":
         this.leaveCall({
-          reason: `🛑 Panggilan rapat telah diakhiri oleh ${data.ended_by || "Host"}.`
+          reason: `Panggilan rapat telah diakhiri oleh ${data.ended_by || "Host"}.`
         })
         break
     }
@@ -414,18 +416,18 @@ export default class extends Controller {
 
     tile = document.createElement("div")
     tile.dataset.peerId = peerId
-    tile.className = "relative aspect-video overflow-hidden rounded-2xl border border-slate-700 bg-slate-800 shadow-sm"
+    tile.className = "relative aspect-video lg:aspect-auto lg:min-h-[220px] overflow-hidden rounded-[12px] border border-outline-variant bg-column shadow-2xs"
     tile.innerHTML = `
       <video autoplay playsinline class="hidden h-full w-full object-cover"></video>
       <audio autoplay class="hidden"></audio>
-      <div data-peer-placeholder class="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 p-4 text-center">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-extrabold text-white shadow">${this.escapeHtml(initials)}</div>
-        <p class="mt-2.5 text-sm font-semibold text-white">${this.escapeHtml(name)}</p>
-        <p class="text-[11px] text-slate-400">${this.escapeHtml(roleLabel)}</p>
+      <div data-peer-placeholder class="flex h-full w-full flex-col items-center justify-center bg-inset p-4 pb-10 text-center">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-outline bg-card font-display text-base font-semibold text-on-surface">${this.escapeHtml(initials)}</div>
+        <p class="mt-2 text-xs font-semibold text-on-surface">${this.escapeHtml(name)}</p>
+        <p class="text-[11px] text-on-surface-muted">${this.escapeHtml(roleLabel)}</p>
       </div>
-      <div class="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between gap-2 rounded-xl bg-slate-950/75 px-3 py-1.5 backdrop-blur-xs">
-        <span class="truncate text-xs font-semibold text-white">${this.escapeHtml(name)}</span>
-        <span data-peer-badges class="text-[11px] text-slate-300 shrink-0"></span>
+      <div class="absolute left-2.5 bottom-2.5 inline-flex max-w-[calc(100%-1.25rem)] items-center gap-1.5 rounded-full bg-inverse-surface/85 px-2.5 py-1 text-[11px] font-medium text-inverse-on-surface backdrop-blur-xs">
+        <span class="truncate">${this.escapeHtml(name)}</span>
+        <span data-peer-badges class="shrink-0 font-mono text-[10px] opacity-85"></span>
       </div>
     `
 
@@ -442,11 +444,11 @@ export default class extends Controller {
     if (!badgeEl) return
 
     const badges = []
-    badges.push(state.audio_enabled === false ? "🔇" : "🎙️")
+    badges.push(state.audio_enabled === false ? "Mute" : "Mic On")
     if (state.screen_sharing) {
-      badges.push("🖥️ Share")
+      badges.push("Share Screen")
     } else {
-      badges.push(state.video_enabled ? "📹" : "Cam Off")
+      badges.push(state.video_enabled ? "Cam On" : "Cam Off")
     }
     badgeEl.textContent = badges.join(" · ")
 
@@ -535,6 +537,12 @@ export default class extends Controller {
   closeEndCallModal() {
     if (this.hasEndCallModalTarget) {
       this.endCallModalTarget.classList.add("hidden")
+    }
+  }
+
+  handleKeydown(event) {
+    if (event.key === "Escape") {
+      this.closeEndCallModal()
     }
   }
 
@@ -657,68 +665,102 @@ export default class extends Controller {
     })
   }
 
+  setDockButtonContent(button, iconName, labelText) {
+    const iconEl = button.querySelector('[data-role="icon"]')
+    const labelEl = button.querySelector('[data-role="label"]')
+    if (iconEl) iconEl.textContent = iconName
+    if (labelEl) {
+      labelEl.textContent = labelText
+    } else {
+      button.textContent = labelText
+    }
+    button.setAttribute("title", labelText)
+    button.setAttribute("aria-label", labelText)
+  }
+
   updateMediaButtons() {
+    const circleBase = "inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+
     if (this.hasMicButtonTarget) {
       const hasMic = Boolean(this.localStream?.getAudioTracks().length)
       this.micButtonTarget.disabled = !hasMic
-      this.micButtonTarget.textContent = this.audioEnabled ? "🎙️ Mic Aktif" : "🔇 Mic Mute"
-      this.micButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
+      this.setDockButtonContent(
+        this.micButtonTarget,
+        this.audioEnabled ? "mic" : "mic_off",
+        this.audioEnabled ? "Mic Aktif" : "Mic Mute"
+      )
+      this.micButtonTarget.className = `${circleBase} ${
         !hasMic
-          ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+          ? "bg-white/10 text-white/40 cursor-not-allowed"
           : this.audioEnabled
-            ? "bg-slate-800 text-white hover:bg-slate-700"
-            : "bg-rose-600 text-white hover:bg-rose-500"
+            ? "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
+            : "bg-danger text-on-danger hover:bg-danger-hover cursor-pointer"
       }`
     }
 
     if (this.hasCamButtonTarget) {
       const hasCam = Boolean(this.localStream?.getVideoTracks().length)
       this.camButtonTarget.disabled = !hasCam
-      this.camButtonTarget.textContent = this.videoEnabled ? "📹 Cam Aktif" : "🚫 Cam Off"
-      this.camButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
+      this.setDockButtonContent(
+        this.camButtonTarget,
+        this.videoEnabled ? "videocam" : "videocam_off",
+        this.videoEnabled ? "Cam Aktif" : "Cam Off"
+      )
+      this.camButtonTarget.className = `${circleBase} ${
         !hasCam
-          ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+          ? "bg-white/10 text-white/40 cursor-not-allowed"
           : this.videoEnabled
-            ? "bg-slate-800 text-white hover:bg-slate-700"
-            : "bg-rose-600 text-white hover:bg-rose-500"
+            ? "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
+            : "bg-danger text-on-danger hover:bg-danger-hover cursor-pointer"
       }`
     }
 
     if (this.hasScreenButtonTarget) {
       this.screenButtonTarget.disabled = !this.callActive
-      this.screenButtonTarget.textContent = this.screenSharing ? "🛑 Stop Share" : "🖥️ Share Screen"
-      this.screenButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
+      this.setDockButtonContent(
+        this.screenButtonTarget,
+        this.screenSharing ? "stop_screen_share" : "present_to_all",
+        this.screenSharing ? "Stop Share" : "Share Screen"
+      )
+      this.screenButtonTarget.className = `${circleBase} ${
         !this.callActive
-          ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+          ? "bg-white/10 text-white/40 cursor-not-allowed"
           : this.screenSharing
-            ? "bg-indigo-600 text-white hover:bg-indigo-500"
-            : "bg-slate-800 text-white hover:bg-slate-700"
+            ? "bg-primary text-on-primary hover:bg-primary-hover cursor-pointer"
+            : "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
       }`
     }
 
     if (this.hasMirrorButtonTarget) {
       const mirrorDisabled = !this.callActive || this.screenSharing
       this.mirrorButtonTarget.disabled = mirrorDisabled
-      this.mirrorButtonTarget.textContent = this.mirrorEnabled ? "🪞 Flip Cam: ON" : "🪞 Flip Cam: OFF"
-      this.mirrorButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
+      this.setDockButtonContent(
+        this.mirrorButtonTarget,
+        "flip",
+        this.mirrorEnabled ? "Flip Cam: ON" : "Flip Cam: OFF"
+      )
+      this.mirrorButtonTarget.className = `${circleBase} ${
         mirrorDisabled
-          ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+          ? "bg-white/10 text-white/40 cursor-not-allowed"
           : this.mirrorEnabled
-            ? "bg-indigo-600/80 text-white hover:bg-indigo-500"
-            : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+            ? "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
+            : "bg-white/8 text-inverse-on-surface/75 hover:bg-white/20 cursor-pointer"
       }`
     }
 
     if (this.hasCallButtonTarget) {
-      if (this.callActive) {
-        this.callButtonTarget.textContent = this.isHostValue ? "📞 Akhiri Panggilan" : "📞 Keluar dari Panggilan"
-      } else {
-        this.callButtonTarget.textContent = "📞 Gabung Panggilan"
-      }
-      this.callButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer ${
+      const callLabel = this.callActive
+        ? (this.isHostValue ? "Akhiri Panggilan" : "Keluar dari Panggilan")
+        : "Gabung Panggilan"
+      this.setDockButtonContent(
+        this.callButtonTarget,
+        this.callActive ? "call_end" : "call",
+        callLabel
+      )
+      this.callButtonTarget.className = `inline-flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         this.callActive
-          ? "bg-rose-600 hover:bg-rose-500 shadow-xs"
-          : "bg-emerald-600 hover:bg-emerald-500 shadow-xs"
+          ? "bg-danger text-on-danger hover:bg-danger-hover"
+          : "bg-primary text-on-primary hover:bg-primary-hover"
       }`
     }
   }
@@ -731,7 +773,7 @@ export default class extends Controller {
 
     if (!window.isSecureContext) {
       this.setLiveCaption(
-        "⚠️ Live Speech-to-Text membutuhkan HTTPS atau http://localhost (saat ini halaman tidak di Secure Context).",
+        "Live Speech-to-Text membutuhkan HTTPS atau http://localhost (saat ini halaman tidak di Secure Context).",
         "rose"
       )
       return
@@ -740,7 +782,7 @@ export default class extends Controller {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
       this.setLiveCaption(
-        "⚠️ Browser Anda tidak mendukung Web Speech Recognition. Gunakan Google Chrome/Edge atau ketik pada Quick Caption / Transcript di bawah.",
+        "Browser Anda tidak mendukung Web Speech Recognition. Gunakan Google Chrome/Edge atau ketik pada Quick Caption / Transcript di bawah.",
         "amber"
       )
       return
@@ -756,7 +798,7 @@ export default class extends Controller {
       this.speechErrorMessage = null
 
       this.recognition.onstart = () => {
-        this.setLiveCaption("🎤 Mendengarkan suara Anda (id-ID)... silakan bicara ke mikrofon.", "emerald")
+        this.setLiveCaption("Mendengarkan suara Anda (id-ID)... silakan bicara ke mikrofon.", "emerald")
       }
 
       this.recognition.onresult = (event) => {
@@ -770,19 +812,19 @@ export default class extends Controller {
               client_id: this.clientId,
               text
             })
-            this.setLiveCaption(`🎤 ${this.userNameValue}: ${text}`, "slate")
+            this.setLiveCaption(`${this.userNameValue}: ${text}`, "slate")
           } else {
             interimText += `${text} `
           }
         }
         if (interimText.trim()) {
-          this.setLiveCaption(`🎤 ${this.userNameValue}: ${interimText.trim()}...`, "indigo")
+          this.setLiveCaption(`${this.userNameValue}: ${interimText.trim()}...`, "indigo")
         }
       }
 
       this.recognition.onerror = (event) => {
         if (event.error === "no-speech") {
-          this.setLiveCaption("🎤 Tidak ada suara terdeteksi... terus mendengarkan.", "slate")
+          this.setLiveCaption("Tidak ada suara terdeteksi... terus mendengarkan.", "slate")
           return
         }
 
@@ -809,7 +851,7 @@ export default class extends Controller {
     } catch (error) {
       this.stopSpeechRecognition({ preserveCaption: true })
       this.setLiveCaption(
-        `⚠️ Gagal memulai Speech-to-Text (${error.message}). Gunakan Quick Caption atau ketik manual di kolom Transcript.`,
+        `Gagal memulai Speech-to-Text (${error.message}). Gunakan Quick Caption atau ketik manual di kolom Transcript.`,
         "amber"
       )
     }
@@ -828,33 +870,33 @@ export default class extends Controller {
     switch (code) {
       case "network":
         if (isBrave) {
-          return "⚠️ Browser Brave memblokir server Speech-to-Text Google (error: network). Buka di Google Chrome/Microsoft Edge untuk dikte suara live, atau gunakan Quick Caption di bawah."
+          return "Browser Brave memblokir server Speech-to-Text Google (error: network). Buka di Google Chrome/Microsoft Edge untuk dikte suara live, atau gunakan Quick Caption di bawah."
         }
-        return "⚠️ Layanan Web Speech API butuh koneksi internet ke server speech browser (error: network). Anda tetap bisa menggunakan Quick Caption atau ketik manual."
+        return "Layanan Web Speech API butuh koneksi internet ke server speech browser (error: network). Anda tetap bisa menggunakan Quick Caption atau ketik manual."
       case "not-allowed":
       case "service-not-allowed":
         return isBrave
-          ? "⚠️ Brave menonaktifkan Web Speech API demi privasi. Gunakan Chrome/Edge atau Quick Caption di bawah."
-          : "⚠️ Izin mikrofon ditolak browser. Klik ikon gembok di address bar -> Izinkan Mikrofon, lalu coba lagi."
+          ? "Brave menonaktifkan Web Speech API demi privasi. Gunakan Chrome/Edge atau Quick Caption di bawah."
+          : "Izin mikrofon ditolak browser. Klik ikon gembok di address bar, lalu izinkan Mikrofon dan coba lagi."
       case "audio-capture":
-        return "⚠️ Mikrofon tidak terdeteksi atau sedang dipakai aplikasi lain."
+        return "Mikrofon tidak terdeteksi atau sedang dipakai aplikasi lain."
       case "language-not-supported":
-        return "⚠️ Bahasa Indonesia (id-ID) belum didukung di sistem speech browser ini."
+        return "Bahasa Indonesia (id-ID) belum didukung di sistem speech browser ini."
       default:
-        return `⚠️ Speech-to-Text terhenti (${code}). Silakan lanjutkan via Quick Caption atau kolom Transcript.`
+        return `Speech-to-Text terhenti (${code}). Silakan lanjutkan via Quick Caption atau kolom Transcript.`
     }
   }
 
   setLiveCaption(message, tone = "slate") {
     if (!this.hasLiveCaptionsTarget) return
     const tones = {
-      slate: "bg-slate-950/60 text-slate-300 border-slate-800",
-      emerald: "bg-emerald-950/70 text-emerald-200 border-emerald-700/60",
-      indigo: "bg-indigo-950/70 text-indigo-200 border-indigo-700/60",
-      amber: "bg-amber-950/80 text-amber-200 border-amber-600/60",
-      rose: "bg-rose-950/80 text-rose-200 border-rose-600/60"
+      slate: "border-outline-variant bg-inset text-on-surface-variant",
+      emerald: "border-primary-border bg-primary-soft text-on-primary-soft",
+      indigo: "border-outline bg-card text-on-surface",
+      amber: "border-warning-border bg-warning-soft text-on-warning-soft",
+      rose: "border-danger-border bg-danger-soft text-on-danger-soft"
     }
-    this.liveCaptionsTarget.className = `mt-3 min-h-[32px] rounded-xl border px-3 py-2 text-xs leading-relaxed ${tones[tone] || tones.slate}`
+    this.liveCaptionsTarget.className = `mt-3 min-h-[34px] rounded-xl border px-3.5 py-2 text-xs leading-relaxed ${tones[tone] || tones.slate}`
     this.liveCaptionsTarget.textContent = message
   }
 
@@ -867,7 +909,7 @@ export default class extends Controller {
     }
     this.updateSpeechButton()
     if (!options.preserveCaption) {
-      this.setLiveCaption("💡 Live Speech-to-Text dimatikan. Ketik poin rapat di Quick Caption atau kolom Transcript.", "slate")
+      this.setLiveCaption("Live Speech-to-Text dimatikan. Ketik poin rapat di Quick Caption atau kolom Transcript.", "slate")
     }
   }
 
@@ -883,23 +925,48 @@ export default class extends Controller {
       client_id: this.clientId,
       text
     })
-    this.setLiveCaption(`🎤 ${this.userNameValue}: ${text}`, "indigo")
+    this.setLiveCaption(`${this.userNameValue}: ${text}`, "indigo")
     this.quickCaptionInputTarget.value = ""
     this.quickCaptionInputTarget.focus()
   }
 
   updateSpeechButton() {
     if (!this.hasSpeechButtonTarget) return
-    this.speechButtonTarget.textContent = this.recognizing ? "🔴 Stop Live Captions" : "🗣️ Live Speech-to-Text"
-    this.speechButtonTarget.className = `rounded-xl px-3.5 py-2 text-xs font-semibold transition cursor-pointer ${
-      this.recognizing ? "bg-rose-600 text-white hover:bg-rose-500" : "bg-indigo-600 text-white hover:bg-indigo-500"
+    this.setDockButtonContent(
+      this.speechButtonTarget,
+      this.recognizing ? "graphic_eq" : "closed_caption",
+      this.recognizing ? "Stop Live Captions" : "Live Speech-to-Text"
+    )
+    this.speechButtonTarget.className = `inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      this.recognizing
+        ? "bg-primary text-on-primary hover:bg-primary-hover"
+        : "bg-white/15 text-inverse-on-surface hover:bg-white/25"
     }`
+  }
+
+  switchRightTab(event) {
+    const activeKey = event.currentTarget.dataset.meetingTab
+    if (!activeKey) return
+
+    this.rightTabTargets.forEach((tab) => {
+      const selected = tab.dataset.meetingTab === activeKey
+      tab.setAttribute("aria-selected", selected ? "true" : "false")
+      tab.className = `inline-flex min-h-11 sm:min-h-9 items-center justify-center gap-1.5 border-b-2 px-2 py-1.5 text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        selected
+          ? "border-primary text-primary-text bg-panel"
+          : "border-transparent text-on-surface-muted hover:text-on-surface hover:bg-hover/60"
+      }`
+    })
+
+    this.rightPanelTargets.forEach((panel) => {
+      panel.classList.toggle("hidden", panel.dataset.meetingPanel !== activeKey)
+    })
   }
 
   onRemoteTranscriptChunk(data) {
     const line = `${data.speaker}: ${data.text}`
     this.appendTranscriptLine(line, false)
-    this.setLiveCaption(`🎤 ${line}`, "indigo")
+    this.setLiveCaption(line, "indigo")
   }
 
   appendTranscriptLine(line, shouldPersist = true) {

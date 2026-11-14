@@ -29,7 +29,7 @@ test:
   url: <%= ENV["TEST_DATABASE_URL"] %>
 <% else %>
   <<: *sqlite_default
-  database: storage/test.sqlite3
+  url: sqlite3:storage/test.sqlite3
 <% end %>
 
 # In production, set DATABASE_URL (e.g. Neon PostgreSQL) for single-DB deployment.

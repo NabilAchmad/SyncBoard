@@ -1,13 +1,12 @@
 <% if record.errors.any? %>
-  <div class="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-    <p class="font-semibold mb-1">
+  <div class="mb-5 rounded-xl border border-danger-border bg-danger-soft p-4 text-sm text-on-danger-soft" role="alert">
+    <p class="mb-1 font-semibold">
       Terdapat <%= record.errors.count %> kesalahan pada input:
     </p>
-    <ul class="list-disc pl-5 space-y-0.5">
+    <ul class="list-disc space-y-0.5 pl-5">
       <% record.errors.full_messages.each do |message| %>
         <li><%= message %></li>
       <% end %>
     </ul>
   </div>
 <% end %>
-

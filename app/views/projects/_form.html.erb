@@ -1,48 +1,54 @@
-<div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-  <%= form_with model: project, class: "space-y-5" do |form| %>
+<div class="<%= ui_card_class('p-6 sm:p-8') %>">
+  <div class="border-b border-outline-variant pb-4">
+    <h2 class="font-display text-xl font-semibold text-on-surface">
+      <%= project.persisted? ? "Pengaturan Proyek #{project.key}" : "Detail Proyek Baru" %>
+    </h2>
+    <p class="mt-1 text-xs text-on-surface-variant">
+      <%= project.persisted? ? "Perbarui informasi, kode prefix, atau status proyek tim." : "Siapkan board Kanban baru beserta prefix unik untuk seluruh task." %>
+    </p>
+  </div>
+
+  <%= form_with model: project, class: "mt-6 space-y-5" do |form| %>
     <%= render "shared/form_errors", record: project %>
 
     <div class="grid gap-4 sm:grid-cols-3">
       <div class="sm:col-span-2">
-        <%= form.label :name, "Nama Proyek", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.label :name, "Nama Proyek", class: ui_label_class("text-sm") %>
         <%= form.text_field :name,
           required: true,
           autofocus: true,
           placeholder: "Masukkan nama proyek",
-          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          class: ui_input_class("mt-1.5 py-2.5") %>
       </div>
 
       <div>
-        <%= form.label :key, "Kode Board (2-6 huruf)", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.label :key, "Kode Board (2-6 huruf)", class: ui_label_class("text-sm") %>
         <%= form.text_field :key,
           placeholder: "SYNC",
           maxlength: 6,
-          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm uppercase focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
-        <p class="mt-1 text-[11px] text-slate-400">Dipakai sebagai prefix kode task, misal SYNC-1.</p>
+          class: ui_input_class("mt-1.5 py-2.5 uppercase font-mono") %>
+        <p class="mt-1.5 text-xs text-on-surface-muted">Dipakai sebagai prefix kode task, misal SYNC-1.</p>
       </div>
     </div>
 
     <div>
-      <%= form.label :description, "Deskripsi Singkat Proyek", class: "block text-sm font-medium text-slate-700" %>
+      <%= form.label :description, "Deskripsi Singkat Proyek", class: ui_label_class("text-sm") %>
       <%= form.text_area :description,
         rows: 3,
         placeholder: "Tujuan proyek, target sprint, atau cakupan pekerjaan tim...",
-        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        class: ui_input_class("mt-1.5 py-2.5") %>
     </div>
 
     <% if project.persisted? %>
       <div>
-        <%= form.label :status, "Status Proyek", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.select :status, Project::STATUSES.map { |k, v| [v, k] }, {},
-          class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        <%= form.label :status, "Status Proyek", class: ui_label_class("text-sm") %>
+        <%= form.select :status, Project::STATUSES.map { |k, v| [v, k] }, {}, class: ui_input_class("mt-1.5 py-2.5") %>
       </div>
     <% end %>
 
-    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-      <%= link_to "Batal", project.persisted? ? project_path(project) : root_path, class: "rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100" %>
-      <%= form.submit(project.persisted? ? "Simpan Perubahan" : "Buat Proyek & Buka Kanban",
-        class: "rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs") %>
+    <div class="flex flex-wrap items-center justify-end gap-3 border-t border-outline-variant pt-4">
+      <%= link_to "Batal", project.persisted? ? project_path(project) : root_path, class: ui_btn_secondary_class("px-4 py-2 text-sm") %>
+      <%= form.submit(project.persisted? ? "Simpan Perubahan" : "Buat Proyek & Buka Kanban", class: ui_btn_primary_class("px-5 py-2")) %>
     </div>
   <% end %>
 </div>
-

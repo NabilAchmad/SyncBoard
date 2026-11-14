@@ -1,12 +1,16 @@
-<% content_for :title, "#{@meeting.title} (#{@meeting.room_code}) — SyncBoard" %>
-<% content_for :page_title, "Meeting Room · #{@meeting.title}" %>
+<% content_for :title, "#{@meeting.title} (#{@meeting.room_code}) | SyncBoard" %>
+<% content_for :page_title, "#{@project.key} · #{@meeting.title}" %>
+<% content_for :full_bleed, "true" %>
 
 <%= turbo_stream_from @meeting, :room %>
 
 <% first_code = @project_tasks[0]&.code || "#{@project.key}-1" %>
 <% is_room_host = (@meeting.host_id == current_user.id) %>
-<div class="space-y-5"
+<% has_pending_acc = @meeting.meeting_action_items.where(selected: true, applied: false).exists? || @meeting.summary_ready? %>
+
+<div class="flex flex-1 flex-col min-h-0"
      data-controller="meeting-room"
+     data-action="keydown.window->meeting-room#handleKeydown"
      data-meeting-room-meeting-id-value="<%= @meeting.id %>"
      data-meeting-room-user-id-value="<%= current_user.id %>"
      data-meeting-room-user-name-value="<%= current_user.full_name %>"
@@ -17,178 +21,185 @@
      data-meeting-room-ice-servers-value="<%= webrtc_ice_servers.to_json %>"
      data-meeting-room-auto-join-call-value="<%= @meeting.ended_at.blank? && !@meeting.approved? && !@meeting.ended? %>">
 
-  <!-- Header Ruang Diskusi -->
-  <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between shadow-xs">
-    <div class="min-w-0 space-y-1">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="rounded-md bg-slate-900 px-2.5 py-0.5 font-mono text-xs font-bold text-white"><%= @meeting.room_code %></span>
-        <%= meeting_status_badge(@meeting) %>
-        <% if is_room_host %>
-          <span class="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-            Host Room
-          </span>
-        <% end %>
-        <span data-meeting-room-target="participantCount" class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-          1 Online
-        </span>
-      </div>
-      <h2 class="truncate text-lg font-extrabold text-slate-900"><%= @meeting.title %></h2>
-      <p class="text-xs text-slate-500">
-        Proyek: <strong><%= @project.name %> (<%= @project.key %>)</strong> · Host: <%= @meeting.host.full_name %>
-      </p>
+  <div class="flex flex-wrap items-center justify-between gap-2.5 border-b border-outline-variant bg-panel px-4 py-2.5 sm:px-6 shrink-0">
+    <div class="flex flex-wrap items-center gap-2 min-w-0">
+      <span class="h-2 w-2 shrink-0 rounded-full <%= @meeting.live? ? 'bg-danger animate-pulse' : 'bg-outline' %>" aria-hidden="true"></span>
+      <h2 class="truncate font-display text-sm sm:text-base font-semibold text-on-surface"><%= @meeting.title %></h2>
+      <span class="rounded-[6px] border border-outline-variant bg-inset px-2 py-0.5 font-mono text-[11px] font-semibold text-on-surface"><%= @meeting.room_code %></span>
+      <%= meeting_status_badge(@meeting) %>
+      <span data-meeting-room-target="participantCount" class="rounded-[6px] border border-primary-border bg-primary-soft px-2 py-0.5 font-mono text-[11px] font-semibold text-on-primary-soft">
+        1 Online
+      </span>
+      <span data-meeting-room-target="localStatus" class="hidden sm:inline-flex items-center rounded-[6px] border border-outline-variant bg-inset px-2 py-0.5 text-[11px] text-on-surface-muted">
+        Menghubungkan...
+      </span>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2 shrink-0">
-      <%= link_to project_path(@project), class: "rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition" do %>
-        ← Kembali ke Kanban Board
-      <% end %>
-    </div>
+    <%= link_to project_path(@project), class: "inline-flex min-h-11 sm:min-h-8 items-center gap-1 rounded-[8px] border border-outline-variant bg-card px-2.5 py-1 text-xs font-semibold text-on-surface hover:border-outline hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition shrink-0" do %>
+      <%= material_icon("arrow_back", size: 15) %>
+      <span>Kembali ke Kanban</span>
+    <% end %>
   </div>
 
-  <div class="grid gap-5 lg:grid-cols-12">
-    <!-- Kiri: Video Call WebRTC Stage + Transcript & Generate Summary -->
-    <div class="space-y-5 lg:col-span-7">
-      <!-- Studio Video Call WebRTC -->
-      <div class="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <span class="text-xs font-bold tracking-wide text-slate-200">VIDEO CALL & SCREEN SHARE (WEBRTC)</span>
+  <div class="flex flex-1 flex-col lg:grid lg:grid-cols-12 min-h-0">
+    <div class="flex flex-col justify-between gap-3 p-3 sm:p-4 lg:col-span-8 min-w-0 min-h-0">
+      <div class="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 items-stretch min-h-[240px]">
+        <div class="relative aspect-video lg:aspect-auto lg:min-h-[220px] overflow-hidden rounded-[12px] border border-outline-variant bg-column shadow-2xs">
+          <video data-meeting-room-target="localVideo" autoplay muted playsinline class="hidden h-full w-full object-cover"></video>
+          <div data-meeting-room-target="localPlaceholder" class="flex h-full w-full flex-col items-center justify-center bg-inset p-4 pb-10 text-center">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-outline bg-card font-display text-base font-semibold text-on-surface"><%= current_user.initials %></div>
+            <p class="mt-2 text-xs font-semibold text-on-surface"><%= current_user.full_name %></p>
+            <p class="text-[11px] text-on-surface-muted"><%= current_user.role_label %></p>
           </div>
-          <span data-meeting-room-target="localStatus" class="inline-flex items-center rounded-full border border-slate-600 bg-slate-800 px-2.5 py-0.5 text-[11px] font-medium text-slate-200">
-            Menghubungkan perangkat media...
-          </span>
-        </div>
-
-        <!-- Grid Video Peserta -->
-        <div class="grid gap-3 sm:grid-cols-2">
-          <!-- Video Lokal -->
-          <div class="relative aspect-video overflow-hidden rounded-2xl border border-indigo-500/40 bg-slate-800">
-            <video data-meeting-room-target="localVideo" autoplay muted playsinline class="hidden h-full w-full object-cover"></video>
-            <div data-meeting-room-target="localPlaceholder" class="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-800 p-4 text-center">
-              <div class="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-lg font-extrabold text-white shadow"><%= current_user.initials %></div>
-              <p class="mt-2.5 text-sm font-semibold text-white"><%= current_user.full_name %> (Anda)</p>
-              <p class="text-[11px] text-slate-400"><%= current_user.role_label %></p>
-            </div>
-            <div class="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between rounded-xl bg-slate-950/75 px-3 py-1.5 backdrop-blur-xs">
-              <span class="truncate text-xs font-semibold text-white">Anda · <%= current_user.full_name %></span>
-              <span class="rounded bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-bold text-indigo-200">Local</span>
-            </div>
-          </div>
-
-          <!-- Remote Peers Container -->
-          <div data-meeting-room-target="peersGrid" class="contents"></div>
-
-          <!-- Empty State saat baru 1 orang -->
-          <div data-meeting-room-target="emptyState" class="flex aspect-video flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-800/40 p-4 text-center">
-            <span class="text-2xl">👥</span>
-            <p class="mt-2 text-xs font-semibold text-slate-200">Menunggu peserta lain bergabung</p>
-            <p class="mt-1 text-[11px] text-slate-400 max-w-[230px]">Bagikan tautan atau kode room <strong><%= @meeting.room_code %></strong> kepada rekan tim untuk mulai berkolaborasi.</p>
+          <div class="absolute left-2.5 bottom-2.5 inline-flex max-w-[calc(100%-1.25rem)] items-center gap-1.5 rounded-full bg-inverse-surface/85 px-2.5 py-1 text-[11px] font-medium text-inverse-on-surface backdrop-blur-xs">
+            <span class="truncate">Anda · <%= current_user.full_name %></span>
           </div>
         </div>
 
-        <!-- Live Captions Bar -->
-        <div data-meeting-room-target="liveCaptions" class="mt-3 min-h-[32px] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs leading-relaxed text-slate-300">
-          💡 Aktifkan <strong>Live Speech-to-Text</strong> (Chrome/Edge) atau kirim <strong>Quick Caption</strong> untuk mencatat poin suara langsung ke Transcript.
-        </div>
+        <div data-meeting-room-target="peersGrid" class="contents"></div>
 
-        <!-- Quick Caption Input (Fallback aman untuk Brave / tanpa mic) -->
-        <form data-action="submit->meeting-room#submitQuickCaption" class="mt-2.5 flex gap-2">
-          <input type="text"
-                 data-meeting-room-target="quickCaptionInput"
-                 placeholder="Ketik poin cepat / live caption lalu Enter (otomatis broadcast & masuk Transcript)..."
-                 class="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-xs text-white placeholder-slate-400 focus:border-indigo-400 focus:outline-none">
-          <button type="submit"
-                  class="rounded-xl bg-slate-700 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-600 transition cursor-pointer shrink-0">
-            + Kirim Caption
-          </button>
-        </form>
-
-        <!-- Toolbar Media Controls -->
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" data-meeting-room-target="micButton" data-action="meeting-room#toggleMic"
-              class="rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition cursor-pointer">
-              🎙️ Mic
-            </button>
-            <button type="button" data-meeting-room-target="camButton" data-action="meeting-room#toggleCam"
-              class="rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition cursor-pointer">
-              📹 Cam
-            </button>
-            <button type="button" data-meeting-room-target="mirrorButton" data-action="meeting-room#toggleMirror"
-              class="rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition cursor-pointer">
-              🪞 Flip Cam
-            </button>
-            <button type="button" data-meeting-room-target="screenButton" data-action="meeting-room#toggleScreenShare"
-              class="rounded-xl bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-700 transition cursor-pointer">
-              🖥️ Share Screen
-            </button>
-            <button type="button" data-meeting-room-target="callButton" data-action="meeting-room#toggleCall"
-              class="rounded-xl bg-rose-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-rose-500 transition cursor-pointer shadow-xs">
-              <%= is_room_host ? "📞 Akhiri Panggilan" : "📞 Keluar dari Panggilan" %>
-            </button>
-          </div>
-
-          <button type="button" data-meeting-room-target="speechButton" data-action="meeting-room#toggleSpeechRecognition"
-            class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition cursor-pointer">
-            🗣️ Live Speech-to-Text
-          </button>
+        <div data-meeting-room-target="emptyState" class="flex aspect-video lg:aspect-auto lg:min-h-[220px] flex-col items-center justify-center rounded-[12px] border border-dashed border-outline-variant bg-inset/60 p-4 text-center">
+          <%= material_icon("group_add", size: 22, extra_class: "text-on-surface-muted mb-1.5") %>
+          <p class="font-display text-sm font-semibold text-on-surface">Menunggu peserta lain</p>
+          <p class="mt-0.5 text-[11px] text-on-surface-muted">
+            Kode room <span class="font-mono font-semibold text-on-surface"><%= @meeting.room_code %></span>
+          </p>
         </div>
       </div>
 
-      <!-- Notulensi / Transcript & Tombol Generate Rangkuman -->
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="text-sm font-bold text-slate-900">Transcript & Notulensi Diskusi</h3>
-            <p class="text-xs text-slate-500">Catat poin rapat atau rekam via suara, lalu generate usulan perubahan Kanban.</p>
+      <div class="space-y-2 shrink-0">
+        <div class="grid gap-2 sm:grid-cols-12 items-center">
+          <div data-meeting-room-target="liveCaptions" class="sm:col-span-7 truncate rounded-[10px] border border-outline-variant bg-panel px-3 py-2 text-xs text-on-surface-variant">
+            Live captions siap digunakan.
           </div>
-          <div class="flex items-center gap-2">
-            <span data-meeting-room-target="saveStatus" class="text-[11px] font-medium text-slate-400"></span>
-          </div>
+
+          <form data-action="submit->meeting-room#submitQuickCaption" class="flex items-center gap-1.5 sm:col-span-5">
+            <input type="text"
+                   data-meeting-room-target="quickCaptionInput"
+                   aria-label="Quick caption"
+                   placeholder="Ketik poin cepat..."
+                   class="min-h-11 sm:min-h-8 min-w-0 flex-1 rounded-[10px] border border-outline-variant bg-input px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25">
+            <button type="submit"
+                    aria-label="Kirim Caption"
+                    class="inline-flex min-h-11 sm:min-h-8 items-center justify-center rounded-[10px] border border-outline-variant bg-panel px-3 py-1.5 text-xs font-semibold text-on-surface hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0">
+              Kirim
+            </button>
+          </form>
         </div>
 
-        <%= form_with url: generate_summary_project_meeting_path(@project, @meeting), method: :post, class: "space-y-3" do %>
-          <%= text_area_tag :transcript_text, @meeting.transcript_text,
-            rows: 7,
-            data: {
-              meeting_room_target: "transcriptInput",
-              action: "input->meeting-room#scheduleSaveTranscript"
-            },
-            placeholder: "Catat poin diskusi, hasil rapat, atau gunakan Speech-to-Text / Quick Caption...\nTips: Sebut kode task (misal #{first_code}), kolom (done / review), & nama PIC agar usulan perubahan Kanban otomatis terdeteksi.",
-            class: "block w-full rounded-xl border border-slate-300 p-3.5 text-xs leading-relaxed font-mono text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        <div class="flex justify-center pt-1">
+          <div class="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-outline-variant/25 bg-inverse-surface p-1.5 text-inverse-on-surface shadow-lg">
+            <button type="button"
+                    data-meeting-room-target="micButton"
+                    data-action="meeting-room#toggleMic"
+                    title="Mic"
+                    aria-label="Mic"
+                    class="inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/15 text-inverse-on-surface hover:bg-white/25 transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 18px;" aria-hidden="true">mic</span>
+              <span data-role="label" class="sr-only">Mic</span>
+            </button>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-[11px] text-slate-400">
-              Tips: Sebut kode task (<code class="rounded bg-slate-100 px-1 font-bold text-slate-600"><%= first_code %></code>), kata <em>done / review / buat task baru</em>, & nama PIC agar otomatis terdeteksi.
-            </p>
-            <%= submit_tag "✨ Generate Rangkuman & Usulan Kanban",
-              class: "rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-500 transition cursor-pointer" %>
+            <button type="button"
+                    data-meeting-room-target="camButton"
+                    data-action="meeting-room#toggleCam"
+                    title="Kamera"
+                    aria-label="Kamera"
+                    class="inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/15 text-inverse-on-surface hover:bg-white/25 transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 18px;" aria-hidden="true">videocam</span>
+              <span data-role="label" class="sr-only">Cam</span>
+            </button>
+
+            <button type="button"
+                    data-meeting-room-target="mirrorButton"
+                    data-action="meeting-room#toggleMirror"
+                    title="Flip Kamera"
+                    aria-label="Flip Kamera"
+                    class="inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/15 text-inverse-on-surface hover:bg-white/25 transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 18px;" aria-hidden="true">flip</span>
+              <span data-role="label" class="sr-only">Flip Cam</span>
+            </button>
+
+            <button type="button"
+                    data-meeting-room-target="screenButton"
+                    data-action="meeting-room#toggleScreenShare"
+                    title="Share Screen"
+                    aria-label="Share Screen"
+                    class="inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/15 text-inverse-on-surface hover:bg-white/25 transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 18px;" aria-hidden="true">present_to_all</span>
+              <span data-role="label" class="sr-only">Share Screen</span>
+            </button>
+
+            <button type="button"
+                    data-meeting-room-target="speechButton"
+                    data-action="meeting-room#toggleSpeechRecognition"
+                    title="Live Speech-to-Text"
+                    aria-label="Live Speech-to-Text"
+                    class="inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-white/15 text-inverse-on-surface hover:bg-white/25 transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 18px;" aria-hidden="true">closed_caption</span>
+              <span data-role="label" class="sr-only">Live Speech-to-Text</span>
+            </button>
+
+            <span class="hidden sm:inline-block h-5 w-px bg-white/20 mx-0.5" aria-hidden="true"></span>
+
+            <button type="button"
+                    data-meeting-room-target="callButton"
+                    data-action="meeting-room#toggleCall"
+                    class="inline-flex h-11 sm:h-9 items-center justify-center gap-1.5 rounded-full bg-danger px-3.5 text-xs font-semibold text-on-danger hover:bg-danger-hover transition cursor-pointer">
+              <span data-role="icon" class="material-symbols-outlined select-none leading-none" style="font-size: 16px;" aria-hidden="true">call_end</span>
+              <span data-role="label"><%= is_room_host ? "Akhiri Panggilan" : "Keluar dari Panggilan" %></span>
+            </button>
           </div>
-        <% end %>
+        </div>
       </div>
     </div>
 
-    <!-- Kanan: Live Chat/Keputusan + Panel Rangkuman & ACC Kanban -->
-    <div class="space-y-5 lg:col-span-5">
-      <!-- Panel Rangkuman & ACC -->
-      <%= render "meetings/summary_panel",
-        meeting: @meeting,
-        project: @project,
-        team_members: @team_members,
-        project_tasks: @project_tasks %>
+    <aside class="flex flex-col border-t border-outline-variant bg-panel lg:col-span-4 lg:border-l lg:border-t-0 min-h-[480px] lg:min-h-0">
+      <div role="tablist" aria-label="Panel Meeting" class="grid grid-cols-3 border-b border-outline-variant bg-sidebar/60 shrink-0">
+        <button type="button"
+                role="tab"
+                data-meeting-room-target="rightTab"
+                data-meeting-tab="summary"
+                data-action="meeting-room#switchRightTab"
+                aria-selected="true"
+                class="inline-flex min-h-11 sm:min-h-9 items-center justify-center gap-1.5 border-b-2 border-primary bg-panel px-2 py-1.5 text-xs font-semibold text-primary-text transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          Ringkasan
+        </button>
 
-      <!-- Live Chat & Catatan Keputusan Rapat -->
-      <div class="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 class="text-sm font-bold text-slate-900">Chat & Keputusan Live</h3>
-            <p class="text-xs text-slate-500">Pesan bertipe <strong>Keputusan</strong> otomatis masuk ke rangkuman rapat.</p>
-          </div>
-          <span class="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">Live Broadcast</span>
-        </div>
+        <button type="button"
+                role="tab"
+                data-meeting-room-target="rightTab"
+                data-meeting-tab="chat"
+                data-action="meeting-room#switchRightTab"
+                aria-selected="false"
+                class="inline-flex min-h-11 sm:min-h-9 items-center justify-center gap-1.5 border-b-2 border-transparent px-2 py-1.5 text-xs font-semibold text-on-surface-muted hover:text-on-surface hover:bg-hover/60 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          Chat Live
+        </button>
 
-        <div id="<%= dom_id(@meeting, :messages) %>" class="my-4 max-h-80 space-y-2.5 overflow-y-auto pr-1">
+        <button type="button"
+                role="tab"
+                data-meeting-room-target="rightTab"
+                data-meeting-tab="transcript"
+                data-action="meeting-room#switchRightTab"
+                aria-selected="false"
+                class="inline-flex min-h-11 sm:min-h-9 items-center justify-center gap-1.5 border-b-2 border-transparent px-2 py-1.5 text-xs font-semibold text-on-surface-muted hover:text-on-surface hover:bg-hover/60 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          Transcript
+        </button>
+      </div>
+
+      <div data-meeting-room-target="rightPanel"
+           data-meeting-panel="summary"
+           class="flex-1 overflow-y-auto p-4 min-h-0">
+        <%= render "meetings/summary_panel",
+          meeting: @meeting,
+          project: @project,
+          team_members: @team_members,
+          project_tasks: @project_tasks %>
+      </div>
+
+      <div data-meeting-room-target="rightPanel"
+           data-meeting-panel="chat"
+           class="hidden flex-1 flex-col min-h-0">
+        <div id="<%= dom_id(@meeting, :messages) %>" class="flex-1 space-y-2.5 overflow-y-auto p-4">
           <% @messages.each do |message| %>
             <%= render "meeting_messages/message", message: message %>
           <% end %>
@@ -199,59 +210,82 @@
             meeting_room_target: "messageForm",
             action: "turbo:submit-end->meeting-room#resetMessageForm"
           },
-          class: "space-y-2 border-t border-slate-100 pt-3" do |form| %>
-          <div class="flex items-center gap-2">
+          class: "border-t border-outline-variant p-3 space-y-2 shrink-0 bg-panel" do |form| %>
+          <div class="flex flex-wrap sm:flex-nowrap items-center gap-1.5">
             <%= form.select :kind,
-              [ ["💬 Chat Biasa", "chat"], ["✅ Keputusan Rapat", "decision"], ["📝 Catatan Penting", "note"] ],
+              [ ["Chat", "chat"], ["Keputusan", "decision"], ["Catatan", "note"] ],
               {},
-              class: "rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:outline-none" %>
+              aria: { label: "Tipe pesan" },
+              class: "min-h-11 sm:min-h-9 rounded-[10px] border border-outline-variant bg-input px-2 py-1.5 text-xs font-medium text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
             <%= form.text_field :body,
               required: true,
               data: { meeting_room_target: "messageBody" },
-              placeholder: "Tulis pesan atau keputusan rapat...",
-              class: "min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
-            <%= form.submit "Kirim",
-              class: "rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-600 transition cursor-pointer shrink-0" %>
+              placeholder: "Tulis pesan atau keputusan...",
+              class: "min-h-11 sm:min-h-9 min-w-0 flex-1 rounded-[10px] border border-outline-variant bg-input px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
+            <%= form.submit "Kirim", class: ui_btn_secondary_class("min-h-11 sm:min-h-9 px-3 py-1.5 text-xs rounded-[10px] shrink-0") %>
           </div>
         <% end %>
       </div>
-    </div>
+
+      <div data-meeting-room-target="rightPanel"
+           data-meeting-panel="transcript"
+           class="hidden flex-1 flex-col p-4 gap-3 min-h-0">
+        <div class="flex items-center justify-between gap-2 shrink-0">
+          <span class="text-xs font-semibold text-on-surface">Notulensi &amp; Transcript</span>
+          <span data-meeting-room-target="saveStatus" class="font-mono text-[10px] text-on-surface-muted"></span>
+        </div>
+
+        <%= form_with url: generate_summary_project_meeting_path(@project, @meeting), method: :post, class: "flex flex-1 flex-col gap-3 min-h-0" do %>
+          <%= text_area_tag :transcript_text, @meeting.transcript_text,
+            rows: 10,
+            data: {
+              meeting_room_target: "transcriptInput",
+              action: "input->meeting-room#scheduleSaveTranscript"
+            },
+            placeholder: "Catat poin diskusi atau gunakan Live Speech-to-Text.\nContoh: #{first_code} sudah selesai (done), PIC Budi.",
+            class: "flex-1 min-h-[220px] w-full rounded-[10px] border border-outline-variant bg-input p-3 font-mono text-xs leading-relaxed text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
+
+          <%= submit_tag "Generate Rangkuman & Usulan Kanban", class: (has_pending_acc ? ui_btn_secondary_class("w-full py-2.5 text-xs rounded-[10px]") : ui_btn_primary_class("w-full py-2.5 text-xs rounded-[10px]")) %>
+        <% end %>
+      </div>
+    </aside>
   </div>
 
   <% if is_room_host %>
-    <!-- Modal Pilihan Host saat Klik Akhiri Panggilan -->
     <div data-meeting-room-target="endCallModal"
-         class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-xs">
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="end_call_modal_title"
+         class="fixed inset-0 z-50 hidden overflow-y-auto bg-inverse-surface/60 p-4 backdrop-blur-[1px]">
       <div class="flex min-h-full items-center justify-center">
-        <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
-        <div class="space-y-1">
-          <h3 class="text-base font-extrabold text-slate-900">Akhiri Panggilan Rapat?</h3>
-          <p class="text-xs leading-relaxed text-slate-500">
-            Sebagai pembuka room (Host), Anda bisa menutup panggilan untuk semua peserta atau hanya keluar sendiri agar tim tetap melanjutkan diskusi.
-          </p>
-        </div>
+        <div class="w-full max-w-sm space-y-4 rounded-[12px] border border-outline-variant bg-panel p-6 shadow-sm">
+          <div class="space-y-1.5">
+            <h3 id="end_call_modal_title" class="font-display text-lg font-semibold text-on-surface">Akhiri Panggilan Rapat?</h3>
+            <p class="text-xs leading-relaxed text-on-surface-variant">
+              Tutup panggilan untuk semua peserta atau keluar sendiri agar tim tetap melanjutkan diskusi.
+            </p>
+          </div>
 
-        <div class="space-y-2.5 pt-1">
-          <%= button_to "🛑 Akhiri untuk Semua", end_call_project_meeting_path(@project, @meeting),
-            method: :post,
-            data: { action: "meeting-room#endMeetingSession" },
-            class: "w-full rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500 transition cursor-pointer shadow-xs" %>
+          <div class="space-y-2.5 pt-1">
+            <%= button_to "Akhiri untuk Semua", end_call_project_meeting_path(@project, @meeting),
+              method: :post,
+              data: { action: "meeting-room#endMeetingSession" },
+              class: "inline-flex min-h-11 w-full items-center justify-center rounded-[10px] bg-danger px-4 py-2.5 text-xs font-semibold text-on-danger hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger transition cursor-pointer" %>
 
-          <button type="button"
-                  data-action="meeting-room#leaveCallAndCloseModal"
-                  class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-50 transition cursor-pointer">
-            👋 Keluar dari Panggilan
-          </button>
+            <button type="button"
+                    data-action="meeting-room#leaveCallAndCloseModal"
+                    class="<%= ui_btn_secondary_class('w-full py-2.5 rounded-[10px]') %>">
+              Keluar dari Panggilan
+            </button>
 
-          <button type="button"
-                  data-action="meeting-room#closeEndCallModal"
-                  class="w-full rounded-xl px-4 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 transition cursor-pointer">
-            Batal
-          </button>
-        </div>
+            <button type="button"
+                    data-action="meeting-room#closeEndCallModal"
+                    class="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] px-4 py-2 text-xs font-semibold text-on-surface-variant hover:bg-hover hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition cursor-pointer">
+              Batal
+            </button>
+          </div>
         </div>
       </div>
     </div>
   <% end %>
 </div>
-

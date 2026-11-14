@@ -13,13 +13,13 @@ export default class extends Controller {
     event.dataTransfer.effectAllowed = "move"
     event.dataTransfer.setData("text/plain", card.dataset.taskId)
     requestAnimationFrame(() => {
-      card.classList.add("opacity-50", "ring-2", "ring-indigo-400")
+      card.classList.add("opacity-60", "ring-2", "ring-primary")
     })
   }
 
   dragEnd(event) {
     const card = event.currentTarget
-    card.classList.remove("opacity-50", "ring-2", "ring-indigo-400")
+    card.classList.remove("opacity-60", "ring-2", "ring-primary")
     this.clearDropHighlights()
     this.draggedCard = null
   }
@@ -28,13 +28,13 @@ export default class extends Controller {
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
     const columnEl = event.currentTarget
-    columnEl.classList.add("ring-2", "ring-indigo-400/70", "bg-indigo-50/40")
+    columnEl.classList.add("ring-2", "ring-primary", "bg-hover")
   }
 
   dragLeave(event) {
     const columnEl = event.currentTarget
     if (!columnEl.contains(event.relatedTarget)) {
-      columnEl.classList.remove("ring-2", "ring-indigo-400/70", "bg-indigo-50/40")
+      columnEl.classList.remove("ring-2", "ring-primary", "bg-hover")
     }
   }
 
@@ -54,6 +54,7 @@ export default class extends Controller {
 
     listEl.appendChild(card)
     card.dataset.column = targetColumn
+    this.element.dispatchEvent(new CustomEvent("kanban:moved", { bubbles: true }))
 
     const cardsInList = Array.from(listEl.querySelectorAll('[data-kanban-target="card"]'))
     const targetPosition = cardsInList.indexOf(card) + 1
@@ -86,7 +87,7 @@ export default class extends Controller {
 
   clearDropHighlights() {
     this.columnTargets.forEach((col) => {
-      col.classList.remove("ring-2", "ring-indigo-400/70", "bg-indigo-50/40")
+      col.classList.remove("ring-2", "ring-primary", "bg-hover")
     })
   }
 }

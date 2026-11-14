@@ -1,85 +1,89 @@
-<% content_for :title, "Daftar Anggota — SyncBoard" %>
+<% content_for :title, "Daftar Anggota | SyncBoard" %>
+<% content_for :auth_max_width, "max-w-md" %>
 
-<div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-  <h2 class="text-2xl font-bold text-slate-900">Registrasi Anggota Tim</h2>
-  <p class="mt-1 text-sm text-slate-500">Buat akun SyncBoard untuk mengakses Kanban Board dan Video Meeting Room.</p>
+<div class="rounded-[12px] border border-outline-variant bg-panel p-7 sm:p-8 shadow-sm">
+  <div class="mb-6 flex flex-col items-center text-center">
+    <%= link_to new_session_path, class: "mb-3 inline-flex h-10 w-10 items-center justify-center rounded-[12px] border border-outline-variant bg-inset font-mono text-xs font-bold tracking-tight text-primary-text transition hover:border-primary-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
+      SB
+    <% end %>
+    <h1 class="font-display text-lg font-semibold tracking-tight text-on-surface">Registrasi Anggota Tim</h1>
+    <p class="mt-1 text-xs leading-relaxed text-on-surface-variant">Buat akun SyncBoard untuk mengakses Kanban Board dan Video Meeting Room.</p>
+  </div>
 
-  <%= form_with model: @user, url: registration_path, class: "mt-6 space-y-4" do |form| %>
+  <%= form_with model: @user, url: registration_path, class: "space-y-4" do |form| %>
     <%= render "shared/form_errors", record: @user %>
 
     <div>
-      <%= form.label :full_name, "Nama Lengkap", class: "block text-sm font-medium text-slate-700" %>
+      <%= form.label :full_name, "Nama Lengkap", class: "block text-xs font-medium text-on-surface-variant" %>
       <%= form.text_field :full_name,
         required: true,
         autofocus: true,
-        placeholder: "Nabil Pratama",
-        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        placeholder: "Nama lengkap Anda",
+        class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-3 sm:grid-cols-2">
       <div>
-        <%= form.label :department, "Divisi", class: "block text-sm font-medium text-slate-700" %>
-        <%= form.select :department, User::DEPARTMENTS, {},
-          class: "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        <%= form.label :department, "Divisi", class: "block text-xs font-medium text-on-surface-variant" %>
+        <%= form.select :department, User::DEPARTMENTS, {}, class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
       </div>
 
       <div>
-        <%= form.label :job_title, "Role / Jabatan", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.label :job_title, "Role / Jabatan", class: "block text-xs font-medium text-on-surface-variant" %>
         <%= form.text_field :job_title,
           required: true,
           placeholder: "Fullstack Engineer",
-          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
       </div>
     </div>
 
     <div>
-      <%= form.label :email_address, "Email Tim", class: "block text-sm font-medium text-slate-700" %>
+      <%= form.label :email_address, "Email Tim", class: "block text-xs font-medium text-on-surface-variant" %>
       <%= form.email_field :email_address,
         required: true,
         autocomplete: "email",
         placeholder: "nama@perusahaan.com",
-        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+        class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-3 sm:grid-cols-2">
       <div>
-        <%= form.label :password, "Password", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.label :password, "Password", class: "block text-xs font-medium text-on-surface-variant" %>
         <%= form.password_field :password,
           required: true,
           autocomplete: "new-password",
           maxlength: 72,
-          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
       </div>
 
       <div>
-        <%= form.label :password_confirmation, "Ulangi Password", class: "block text-sm font-medium text-slate-700" %>
+        <%= form.label :password_confirmation, "Ulangi Password", class: "block text-xs font-medium text-on-surface-variant" %>
         <%= form.password_field :password_confirmation,
           required: true,
           autocomplete: "new-password",
           maxlength: 72,
-          class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+          class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
       </div>
     </div>
 
     <div>
-      <%= label_tag :invite_code, "Kode Undangan Tim (Opsional)", class: "block text-sm font-medium text-slate-700" %>
+      <%= label_tag :invite_code, "Kode Undangan Tim (Opsional)", class: "block text-xs font-medium text-on-surface-variant" %>
       <%= text_field_tag :invite_code,
         params[:invite_code],
         maxlength: 6,
         autocomplete: "off",
-        placeholder: "Misal: A7K9P2 (kosongkan jika belum punya)",
-        class: "mt-1 block w-full rounded-xl border border-slate-300 px-3.5 py-2 font-mono text-sm uppercase tracking-widest focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
-      <p class="mt-1 text-[11px] text-slate-400">Masukkan kode 6 karakter huruf &amp; angka untuk langsung masuk tim, atau kosongkan dulu.</p>
+        placeholder: "A7K9P2 (opsional)",
+        class: "mt-1.5 block w-full min-h-11 sm:min-h-[38px] rounded-[12px] border border-outline-variant bg-input px-3 py-2 font-mono text-[13px] uppercase tracking-widest text-on-surface placeholder:text-on-surface-muted transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
+      <p class="mt-1.5 text-[11px] text-on-surface-muted">Masukkan kode 6 karakter huruf &amp; angka untuk langsung masuk tim, atau kosongkan dulu.</p>
     </div>
 
-    <div class="pt-2">
-      <%= form.submit "Daftar & Masuk Workspace",
-        class: "w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+    <div class="pt-1">
+      <%= form.submit "Daftar & Masuk Workspace", class: "inline-flex w-full min-h-11 sm:min-h-10 items-center justify-center rounded-[12px] bg-primary px-4 py-2 text-sm font-semibold text-on-primary shadow-xs transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-panel cursor-pointer" %>
     </div>
   <% end %>
 
-  <p class="mt-6 text-center text-sm text-slate-500">
+  <div class="mt-6 border-t border-outline-variant pt-5 text-center text-xs text-on-surface-variant">
     Sudah punya akun?
-    <%= link_to "Masuk di sini", new_session_path, class: "font-semibold text-indigo-600 hover:text-indigo-500" %>
-  </p>
+    <%= link_to "Masuk di sini", new_session_path, class: "inline-flex min-h-11 sm:min-h-0 items-center rounded px-1 font-semibold text-primary-text hover:underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" %>
+  </div>
 </div>

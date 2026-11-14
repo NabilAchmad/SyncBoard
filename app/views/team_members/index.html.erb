@@ -1,126 +1,122 @@
-<% content_for :title, "Kelola Tim #{current_team.name} — SyncBoard" %>
+<% content_for :title, "Kelola Tim #{current_team.name} | SyncBoard" %>
 <% content_for :page_title, "Anggota & Kode Undangan · #{current_team.name}" %>
 
 <div class="space-y-6">
-  <!-- Kode Undangan & Pengaturan Tim -->
   <div class="grid gap-6 lg:grid-cols-12">
-    <div class="rounded-2xl border border-indigo-200 bg-white p-6 shadow-xs lg:col-span-5 space-y-4">
+    <div class="<%= ui_card_class('p-6 lg:col-span-5 space-y-4') %>">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Invitation Code</p>
-        <h2 class="mt-1 text-lg font-extrabold text-slate-900">Kode Undangan Tim</h2>
-        <p class="mt-1 text-xs text-slate-500">Bagikan kode 6 karakter ini agar rekan tim dapat masuk ke workspace <strong><%= current_team.name %></strong>.</p>
+        <p class="text-xs font-semibold uppercase tracking-wider text-on-surface-muted">Invitation Code</p>
+        <h2 class="mt-1 font-display text-xl font-semibold text-on-surface">Kode Undangan Tim</h2>
+        <p class="mt-1 text-xs leading-relaxed text-on-surface-variant">
+          Bagikan kode 6 karakter ini agar rekan tim dapat masuk ke workspace <strong class="text-on-surface"><%= current_team.name %></strong>.
+        </p>
       </div>
 
-      <div class="flex items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 px-4 py-3.5">
-        <span class="font-mono text-2xl font-extrabold tracking-[0.28em] text-indigo-900"><%= current_team.invite_code %></span>
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant bg-inset px-4 py-3.5">
+        <span class="font-mono text-2xl font-bold tracking-[0.28em] text-on-surface"><%= current_team.invite_code %></span>
         <button type="button"
                 data-action="sidebar#copyCode"
                 data-code="<%= current_team.invite_code %>"
-                class="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition cursor-pointer">
+                class="<%= ui_btn_primary_class('px-3.5 py-2 text-xs') %>">
           Salin Kode
         </button>
       </div>
 
-      <div class="flex items-center justify-between gap-2 pt-1">
-        <p class="text-[11px] text-slate-400">Kode lama otomatis tidak berlaku jika dibuat ulang.</p>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <p class="text-xs text-on-surface-muted">Kode lama otomatis tidak berlaku jika dibuat ulang.</p>
         <%= button_to "Buat Kode Baru", regenerate_code_team_path(current_team),
           method: :post,
-          class: "rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition cursor-pointer shrink-0" %>
+          class: ui_btn_secondary_class("shrink-0 px-3 py-1.5") %>
       </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs lg:col-span-7 space-y-4">
+    <div class="<%= ui_card_class('p-6 lg:col-span-7 space-y-4') %>">
       <div>
-        <h2 class="text-lg font-extrabold text-slate-900">Pengaturan Tim (<%= @memberships.size %> Anggota)</h2>
-        <p class="mt-1 text-xs text-slate-500">
-          Sebagai Team Lead di tim ini, Anda dapat memperbarui nama tim, mengangkat <strong>Team Lead</strong> lain, atau mengeluarkan anggota.
+        <h2 class="font-display text-xl font-semibold text-on-surface">Pengaturan Tim (<span class="font-mono"><%= @memberships.size %></span> Anggota)</h2>
+        <p class="mt-1 text-xs leading-relaxed text-on-surface-variant">
+          Sebagai Team Lead di tim ini, Anda dapat memperbarui nama tim, mengangkat <strong class="text-on-surface">Team Lead</strong> lain, atau mengeluarkan anggota.
         </p>
       </div>
 
       <%= form_with model: current_team, url: team_path(current_team), method: :patch, class: "grid gap-3 sm:grid-cols-12" do |form| %>
         <div class="sm:col-span-5">
-          <%= form.label :name, "Nama Tim", class: "block text-xs font-medium text-slate-600" %>
-          <%= form.text_field :name, required: true,
-            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" %>
+          <%= form.label :name, "Nama Tim", class: ui_label_class %>
+          <%= form.text_field :name, required: true, class: ui_input_class("mt-1.5") %>
         </div>
         <div class="sm:col-span-5">
-          <%= form.label :description, "Deskripsi", class: "block text-xs font-medium text-slate-600" %>
-          <%= form.text_field :description, placeholder: "Deskripsi tim...",
-            class: "mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" %>
+          <%= form.label :description, "Deskripsi", class: ui_label_class %>
+          <%= form.text_field :description, placeholder: "Deskripsi tim...", class: ui_input_class("mt-1.5") %>
         </div>
-        <div class="sm:col-span-2 flex items-end">
-          <%= form.submit "Simpan", class: "w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-600 transition cursor-pointer" %>
+        <div class="flex items-end sm:col-span-2">
+          <%= form.submit "Simpan", class: ui_btn_secondary_class("w-full py-2 text-sm") %>
         </div>
       <% end %>
     </div>
   </div>
 
-  <!-- Tabel Anggota Tim Ini -->
-  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
-        <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-          <tr>
-            <th class="px-5 py-3.5">Anggota</th>
-            <th class="px-5 py-3.5">Divisi &amp; Jabatan</th>
-            <th class="px-5 py-3.5">Role di Tim Ini</th>
-            <th class="px-5 py-3.5">Bergabung</th>
-            <th class="px-5 py-3.5 text-right">Aksi</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          <% @memberships.each do |membership| %>
-            <% member = membership.user %>
-            <tr class="hover:bg-slate-50/70">
-              <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
-                  <%= user_avatar(member, size_class: "w-9 h-9", text_class: "text-xs", lead: membership.lead?) %>
-                  <div>
-                    <p class="font-bold text-slate-900">
-                      <%= member.full_name %>
-                      <% if member == current_user %>
-                        <span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">Anda</span>
-                      <% end %>
-                    </p>
-                    <p class="text-[11px] text-slate-500"><%= member.employee_code %> · <%= member.email_address %></p>
-                  </div>
+  <div class="overflow-hidden rounded-xl border border-outline-variant bg-panel shadow-xs">
+    <table class="block w-full text-left text-xs md:table md:divide-y md:divide-outline-variant">
+      <thead class="hidden bg-inset text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant md:table-header-group">
+        <tr>
+          <th class="px-5 py-3.5">Anggota</th>
+          <th class="px-5 py-3.5">Divisi &amp; Jabatan</th>
+          <th class="px-5 py-3.5">Role di Tim Ini</th>
+          <th class="px-5 py-3.5">Bergabung</th>
+          <th class="px-5 py-3.5 text-right">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="block divide-y divide-outline-variant md:table-row-group">
+        <% @memberships.each do |membership| %>
+          <% member = membership.user %>
+          <tr class="block space-y-2.5 p-4 hover:bg-hover md:table-row md:space-y-0 md:p-0 transition">
+            <td class="block md:table-cell md:px-5 md:py-3.5">
+              <div class="flex items-center gap-3">
+                <%= user_avatar(member, size_class: "w-9 h-9", text_class: "text-xs", lead: membership.lead?) %>
+                <div class="min-w-0">
+                  <p class="font-semibold text-on-surface">
+                    <%= member.full_name %>
+                    <% if member == current_user %>
+                      <span class="ml-1 rounded-md border border-outline-variant bg-inset px-1.5 py-0.5 text-[10px] font-semibold text-on-surface-variant">Anda</span>
+                    <% end %>
+                  </p>
+                  <p class="truncate font-mono text-[11px] text-on-surface-muted"><%= member.employee_code %> · <%= member.email_address %></p>
                 </div>
-              </td>
-              <td class="px-5 py-3.5 text-slate-600">
-                <p class="font-medium text-slate-800"><%= member.job_title %></p>
-                <p class="text-[11px] text-slate-400"><%= member.department %></p>
-              </td>
-              <td class="px-5 py-3.5">
-                <span class="inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold <%= membership.lead? ? 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20' : 'bg-slate-100 text-slate-700' %>">
-                  <%= membership.role_label %>
-                </span>
-              </td>
-              <td class="px-5 py-3.5 text-slate-500">
-                <%= membership.joined_at.strftime("%d %b %Y") %>
-              </td>
-              <td class="px-5 py-3.5 text-right">
-                <% if member == current_user %>
-                  <span class="text-[11px] italic text-slate-400">Akun aktif Anda</span>
-                <% else %>
-                  <div class="inline-flex flex-wrap items-center justify-end gap-2">
-                    <% next_role = membership.lead? ? "member" : "lead" %>
-                    <%= button_to(membership.lead? ? "Jadikan Member" : "Angkat Team Lead",
-                      team_member_path(membership),
-                      method: :patch,
-                      params: { team_membership: { role: next_role } },
-                      class: "rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100 cursor-pointer") %>
+              </div>
+            </td>
+            <td class="block text-on-surface-variant md:table-cell md:px-5 md:py-3.5">
+              <p class="font-semibold text-on-surface"><%= member.job_title %></p>
+              <p class="text-[11px] text-on-surface-muted"><%= member.department %></p>
+            </td>
+            <td class="block md:table-cell md:px-5 md:py-3.5">
+              <span class="inline-flex rounded-md border px-2 py-0.5 text-[11px] font-semibold <%= membership.lead? ? 'border-primary-border bg-primary-soft text-on-primary-soft' : 'border-outline-variant bg-inset text-on-surface-variant' %>">
+                <%= membership.role_label %>
+              </span>
+            </td>
+            <td class="block font-mono text-on-surface-variant md:table-cell md:px-5 md:py-3.5">
+              <%= membership.joined_at.strftime("%d %b %Y") %>
+            </td>
+            <td class="block pt-1 md:table-cell md:px-5 md:py-3.5 md:pt-3.5 md:text-right">
+              <% if member == current_user %>
+                <span class="text-[11px] italic text-on-surface-muted">Akun aktif Anda</span>
+              <% else %>
+                <div class="inline-flex flex-wrap items-center gap-2 md:justify-end">
+                  <% next_role = membership.lead? ? "member" : "lead" %>
+                  <%= button_to(membership.lead? ? "Jadikan Member" : "Angkat Team Lead",
+                    team_member_path(membership),
+                    method: :patch,
+                    params: { team_membership: { role: next_role } },
+                    class: ui_btn_secondary_class("px-2.5 py-1.5 text-[11px]")) %>
 
-                    <%= button_to "Keluarkan",
-                      team_member_path(membership),
-                      method: :delete,
-                      class: "rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer" %>
-                  </div>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
+                  <%= button_to "Keluarkan",
+                    team_member_path(membership),
+                    method: :delete,
+                    class: ui_btn_danger_class("px-2.5 py-1.5 text-[11px]") %>
+                </div>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
   </div>
 </div>

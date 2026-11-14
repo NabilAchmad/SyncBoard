@@ -1,254 +1,242 @@
-<% content_for :title, "Workspace — SyncBoard" %>
-<% content_for :page_title, current_team ? "Workspace · #{current_team.name}" : "SyncBoard Team Workspace" %>
+<% content_for :title, "Workspace | SyncBoard" %>
+<% content_for :page_title, current_team ? current_team.name : "Workspace" %>
+<% content_for :full_bleed, "true" %>
 
 <% if current_team.nil? %>
-  <!-- Empty State: Belum tergabung dalam tim mana pun -->
-  <div class="space-y-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-      <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600"><%= greeting_text %>, <%= current_user.full_name %></p>
-      <h2 class="mt-1 text-2xl font-extrabold text-slate-900">Workspace Anda Masih Kosong</h2>
-      <p class="mt-1.5 max-w-2xl text-sm text-slate-500">
-        Anda belum tergabung ke tim mana pun. Masukkan <strong>kode undangan 6 karakter</strong> untuk bergabung dengan tim yang sudah ada, atau buat tim baru Anda sendiri.
+  <div class="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:px-8 space-y-5">
+    <div class="rounded-[12px] border border-outline-variant bg-panel p-6 shadow-2xs">
+      <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-muted"><%= greeting_text %>, <%= current_user.full_name %></p>
+      <h2 class="mt-1 font-display text-xl font-semibold tracking-tight text-on-surface">Workspace Anda Masih Kosong</h2>
+      <p class="mt-1.5 text-xs text-on-surface-variant">
+        Gabung tim menggunakan kode undangan 6 karakter, atau buat tim baru.
       </p>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2">
-      <!-- Gabung Tim via Kode 6 Karakter -->
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-lg text-indigo-600 ring-1 ring-indigo-600/20">🔑</span>
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Gabung dengan Kode Undangan</h3>
-            <p class="text-xs text-slate-500">Minta kode acak 6 karakter (huruf &amp; angka) dari Team Lead Anda.</p>
-          </div>
+    <div class="grid gap-5 md:grid-cols-2">
+      <div class="rounded-[12px] border border-outline-variant bg-card p-5 sm:p-6 space-y-4">
+        <div>
+          <h3 class="font-display text-base font-semibold text-on-surface">Gabung dengan Kode</h3>
+          <p class="mt-0.5 text-xs text-on-surface-muted">Kode undangan 6 karakter dari Team Lead.</p>
         </div>
 
-        <%= form_with url: join_teams_path, method: :post, class: "space-y-4 pt-1" do %>
+        <%= form_with url: join_teams_path, method: :post, class: "space-y-4" do %>
           <div>
-            <%= label_tag :invite_code, "Kode Undangan (6 Karakter)", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+            <%= label_tag :invite_code, "Kode Undangan", class: "sr-only" %>
             <%= text_field_tag :invite_code, nil,
               required: true,
               maxlength: 6,
               autocomplete: "off",
               placeholder: "A7K9P2",
-              class: "mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-center font-mono text-lg font-extrabold uppercase tracking-[0.35em] text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+              class: ui_input_class("py-3 text-center font-mono text-lg font-semibold uppercase tracking-[0.35em] rounded-[12px]") %>
           </div>
 
-          <%= submit_tag "Gabung ke Tim →",
-            class: "w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition cursor-pointer shadow-xs" %>
+          <%= submit_tag "Gabung ke Tim", class: ui_btn_primary_class("w-full py-2.5 rounded-[12px]") %>
         <% end %>
       </div>
 
-      <!-- Buat Tim Baru -->
-      <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white">✨</span>
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Buat Tim Baru</h3>
-            <p class="text-xs text-slate-500">Anda otomatis menjadi Team Lead &amp; mendapat kode undangan 6 karakter.</p>
-          </div>
+      <div class="rounded-[12px] border border-outline-variant bg-card p-5 sm:p-6 space-y-4">
+        <div>
+          <h3 class="font-display text-base font-semibold text-on-surface">Buat Tim Baru</h3>
+          <p class="mt-0.5 text-xs text-on-surface-muted">Otomatis menjadi Team Lead &amp; mendapat kode undangan.</p>
         </div>
 
-        <%= form_with model: (@new_team || Team.new), url: teams_path, class: "space-y-4 pt-1" do |form| %>
+        <%= form_with model: (@new_team || Team.new), url: teams_path, class: "space-y-3" do |form| %>
           <div>
-            <%= form.label :name, "Nama Tim", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+            <%= form.label :name, "Nama Tim", class: ui_label_class("text-xs") %>
             <%= form.text_field :name,
               required: true,
               placeholder: "Misal: Tim Backend Squad",
-              class: "mt-1.5 block w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+              class: ui_input_class("mt-1 py-2 rounded-[12px]") %>
           </div>
 
           <div>
-            <%= form.label :description, "Deskripsi Singkat (Opsional)", class: "block text-xs font-semibold uppercase tracking-wider text-slate-600" %>
+            <%= form.label :description, "Deskripsi (Opsional)", class: ui_label_class("text-xs") %>
             <%= form.text_field :description,
-              placeholder: "Fokus pengembangan atau divisi tim...",
-              class: "mt-1.5 block w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" %>
+              placeholder: "Fokus tim...",
+              class: ui_input_class("mt-1 py-2 rounded-[12px]") %>
           </div>
 
-          <%= form.submit "Buat Tim & Dapatkan Kode",
-            class: "w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 transition cursor-pointer shadow-xs" %>
+          <div class="pt-1">
+            <%= form.submit "Buat Tim & Dapatkan Kode", class: ui_btn_secondary_class("w-full py-2.5 text-sm rounded-[12px]") %>
+          </div>
         <% end %>
       </div>
     </div>
   </div>
 <% else %>
-  <div class="space-y-6">
-    <!-- Hero & Ringkasan Workspace -->
-    <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs lg:flex-row lg:items-center lg:justify-between">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600"><%= greeting_text %>, <%= current_user.full_name %></p>
-          <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">Tim: <%= current_team.name %></span>
-        </div>
-        <h2 class="mt-1 text-2xl font-extrabold text-slate-900">Kelola Proyek, Kanban Board & Rapat Real-Time</h2>
-        <p class="mt-1 text-sm text-slate-500">Pilih proyek untuk membuka papan Kanban atau masuk ke ruang diskusi video call bersama tim.</p>
+  <div class="flex flex-1 flex-col">
+    <div class="flex flex-col gap-3 border-b border-outline-variant bg-panel px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div class="flex flex-wrap items-center gap-2.5 min-w-0">
+        <h2 class="font-display text-lg font-semibold tracking-tight text-on-surface">Kelola Proyek & Board</h2>
+        <span class="inline-flex items-center rounded-full border border-outline-variant bg-inset px-2.5 py-0.5 font-mono text-[11px] font-medium text-on-surface-variant">
+          <%= @projects.size %> Proyek
+        </span>
+        <span class="inline-flex items-center rounded-full border border-outline-variant bg-inset px-2.5 py-0.5 font-mono text-[11px] font-medium text-on-surface-muted">
+          <%= @team_memberships.size %> Anggota
+        </span>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
         <% if current_team_lead? %>
-          <div class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2">
-            <span class="text-[11px] font-semibold text-indigo-700">Kode Undangan:</span>
-            <span class="font-mono text-sm font-extrabold tracking-widest text-indigo-900"><%= current_team.invite_code %></span>
+          <div class="inline-flex min-h-11 sm:min-h-9 items-center gap-2 rounded-[10px] border border-outline-variant bg-card pl-3 pr-1 py-1">
+            <span class="text-xs text-on-surface-muted">Kode Tim</span>
+            <span class="font-mono text-xs font-semibold tracking-widest text-on-surface"><%= current_team.invite_code %></span>
             <button type="button"
                     data-action="sidebar#copyCode"
                     data-code="<%= current_team.invite_code %>"
-                    class="rounded-lg bg-white px-2 py-1 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 hover:bg-indigo-100 cursor-pointer">
+                    class="inline-flex min-h-9 sm:min-h-7 items-center rounded-[7px] bg-inset px-2 text-xs font-semibold text-primary-text hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition cursor-pointer">
               Salin
             </button>
           </div>
         <% end %>
 
-        <%= link_to new_project_path, class: "inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 transition" do %>
-          <span>＋</span>
+        <%= link_to new_project_path, class: "inline-flex min-h-11 sm:min-h-9 items-center gap-1.5 rounded-[10px] bg-primary px-3.5 py-1.5 text-xs font-semibold text-on-primary shadow-2xs transition hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
+          <%= material_icon("add", size: 16) %>
           <span>Buat Proyek Baru</span>
         <% end %>
       </div>
     </div>
 
-    <!-- Statistik Ringkas -->
-    <% total_tasks = @projects.sum { |p| p.tasks.size } %>
-    <% done_tasks = @projects.sum { |p| p.tasks.count { |t| t.column_status == "done" } } %>
-    <% waiting_acc = @projects.sum { |p| p.meetings.count(&:summary_ready?) } %>
-    <% live_meetings = @projects.sum { |p| p.meetings.count(&:live?) } %>
-
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Proyek Aktif</p>
-        <p class="mt-2 text-3xl font-extrabold text-slate-900"><%= @projects.count { |p| p.status == "active" } %></p>
-        <p class="mt-1 text-xs text-slate-500">Total <%= @projects.size %> workspace</p>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Progress Task</p>
-        <p class="mt-2 text-3xl font-extrabold text-indigo-600"><%= done_tasks %><span class="text-lg font-semibold text-slate-400"> / <%= total_tasks %></span></p>
-        <p class="mt-1 text-xs text-slate-500">Task berstatus Done</p>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Ruang Rapat Live</p>
-        <p class="mt-2 text-3xl font-extrabold text-rose-600"><%= live_meetings %></p>
-        <p class="mt-1 text-xs text-slate-500">Sesi video call sedang berjalan</p>
-      </div>
-
-      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Menunggu ACC Lead</p>
-        <p class="mt-2 text-3xl font-extrabold text-amber-600"><%= waiting_acc %></p>
-        <p class="mt-1 text-xs text-slate-500">Rangkuman siap disinkron ke Kanban</p>
-      </div>
-    </div>
-
-    <div class="grid gap-6 lg:grid-cols-12">
-      <!-- Daftar Proyek -->
-      <div class="space-y-4 lg:col-span-8">
-        <div class="flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-900">Daftar Proyek & Board</h3>
-          <span class="text-xs text-slate-500"><%= @projects.size %> proyek di tim ini</span>
-        </div>
-
+    <div class="flex flex-1 flex-col lg:flex-row">
+      <div class="flex-1 min-w-0 p-4 sm:p-6">
         <% if @projects.any? %>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <% @projects.each do |project| %>
               <% counts = project.task_counts_by_column %>
+              <% total_tasks = counts.values.sum %>
+              <% done_pct = total_tasks.positive? ? ((counts["done"].to_f / total_tasks) * 100).round : 0 %>
               <% latest_meeting = project.meetings.sort_by(&:started_at).last %>
-              <div class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition">
+
+              <article class="flex flex-col justify-between rounded-[12px] border border-outline-variant bg-card p-5 shadow-2xs transition hover:border-outline">
                 <div>
                   <div class="flex items-start justify-between gap-2">
-                    <span class="inline-flex items-center rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-extrabold text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-                      <%= project.key %>
-                    </span>
-                    <span class="text-xs text-slate-400">Lead: <%= project.owner.full_name %></span>
+                    <div class="flex min-w-0 items-center gap-2">
+                      <span class="shrink-0 rounded-[6px] border border-primary-border bg-primary-soft px-2 py-0.5 font-mono text-[11px] font-semibold text-on-primary-soft">
+                        <%= project.key %>
+                      </span>
+                      <% if project.completed? %>
+                        <span class="shrink-0 rounded-[6px] border border-primary-border bg-primary-soft px-2 py-0.5 text-[10px] font-semibold text-on-primary-soft">
+                          Selesai
+                        </span>
+                      <% end %>
+                      <h3 class="truncate font-display text-base font-semibold text-on-surface">
+                        <%= link_to project.name, project_path(project), class: "rounded hover:text-primary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" %>
+                      </h3>
+                    </div>
+
+                    <span class="shrink-0 text-[11px] text-on-surface-muted">Lead: <%= project.owner.full_name %></span>
                   </div>
 
-                  <h4 class="mt-3 text-lg font-bold text-slate-900">
-                    <%= link_to project.name, project_path(project), class: "hover:text-indigo-600 transition" %>
-                  </h4>
-                  <p class="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
+                  <p class="mt-2 line-clamp-2 text-xs leading-relaxed text-on-surface-variant">
                     <%= project.description.presence || "Workspace kolaborasi tim, Kanban board, dan ruang rapat video." %>
                   </p>
 
-                  <div class="mt-4 grid grid-cols-4 gap-1.5 text-center">
-                    <div class="rounded-lg bg-slate-50 px-1.5 py-1.5">
-                      <p class="text-sm font-bold text-slate-800"><%= counts["todo"] %></p>
-                      <p class="text-[10px] text-slate-500">To Do</p>
+                  <div class="mt-4 grid grid-cols-4 gap-2 rounded-[10px] border border-outline-variant/80 bg-inset px-2 py-2 text-center">
+                    <div>
+                      <p class="text-[10px] font-semibold uppercase tracking-wider text-on-surface-muted">To Do</p>
+                      <p class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-on-surface"><%= counts["todo"] %></p>
                     </div>
-                    <div class="rounded-lg bg-indigo-50/70 px-1.5 py-1.5">
-                      <p class="text-sm font-bold text-indigo-700"><%= counts["in_progress"] %></p>
-                      <p class="text-[10px] text-indigo-600">Progress</p>
+                    <div>
+                      <p class="text-[10px] font-semibold uppercase tracking-wider text-on-surface-muted">Progress</p>
+                      <p class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-on-surface"><%= counts["in_progress"] %></p>
                     </div>
-                    <div class="rounded-lg bg-amber-50/70 px-1.5 py-1.5">
-                      <p class="text-sm font-bold text-amber-700"><%= counts["review"] %></p>
-                      <p class="text-[10px] text-amber-600">Review</p>
+                    <div>
+                      <p class="text-[10px] font-semibold uppercase tracking-wider text-on-surface-muted">Review</p>
+                      <p class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-on-warning-soft"><%= counts["review"] %></p>
                     </div>
-                    <div class="rounded-lg bg-emerald-50/70 px-1.5 py-1.5">
-                      <p class="text-sm font-bold text-emerald-700"><%= counts["done"] %></p>
-                      <p class="text-[10px] text-emerald-600">Done</p>
+                    <div>
+                      <p class="text-[10px] font-semibold uppercase tracking-wider text-on-surface-muted">Done</p>
+                      <p class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-primary-text"><%= counts["done"] %></p>
+                    </div>
+                  </div>
+
+                  <div class="mt-3.5 space-y-1.5">
+                    <div class="flex items-center justify-between text-[11px]">
+                      <span class="text-on-surface-muted">Progres selesai</span>
+                      <span class="font-mono font-semibold text-on-surface"><%= done_pct %>% (<%= counts["done"] %>/<%= total_tasks %>)</span>
+                    </div>
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-inset" role="progressbar" aria-valuenow="<%= done_pct %>" aria-valuemin="0" aria-valuemax="100" aria-label="Progres task selesai proyek <%= project.name %>">
+                      <div class="h-full rounded-full bg-primary transition-all" style="width: <%= done_pct %>%"></div>
                     </div>
                   </div>
                 </div>
 
-                <div class="mt-5 flex items-center justify-between gap-2 border-t border-slate-100 pt-3.5">
-                  <%= link_to "Buka Kanban →", project_path(project), class: "rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-600 transition" %>
-
-                  <% if latest_meeting %>
-                    <%= link_to project_meeting_path(project, latest_meeting), class: "inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition" do %>
-                      <span>🎥</span>
-                      <span>Room <%= latest_meeting.room_code %></span>
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-outline-variant pt-3.5">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <%= user_avatar(project.owner, size_class: "w-6 h-6", text_class: "text-[10px]", lead: true, team: current_team) %>
+                    <% if latest_meeting %>
+                      <%= link_to project_meeting_path(project, latest_meeting),
+                        class: "inline-flex min-h-9 sm:min-h-7 items-center gap-1 rounded-[7px] border border-outline-variant bg-inset px-2 py-0.5 font-mono text-[11px] font-medium text-on-surface-variant hover:border-outline hover:bg-hover hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition" do %>
+                        <%= material_icon("videocam", size: 13, extra_class: "text-primary-text") %>
+                        <span><%= latest_meeting.room_code %></span>
+                      <% end %>
                     <% end %>
+                  </div>
+
+                  <%= link_to project_path(project), class: "inline-flex min-h-11 sm:min-h-8 items-center gap-1 rounded-[8px] border border-outline-variant bg-panel px-2.5 py-1 text-xs font-semibold text-on-surface hover:border-outline hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition" do %>
+                    <span>Buka</span>
+                    <%= material_icon("arrow_forward", size: 14) %>
                   <% end %>
                 </div>
-              </div>
+              </article>
             <% end %>
           </div>
         <% else %>
-          <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-            <p class="text-sm font-semibold text-slate-700">Belum ada proyek di tim <%= current_team.name %>.</p>
-            <p class="mt-1 text-xs text-slate-500">Buat proyek pertama tim Anda untuk mulai menyusun Kanban Board &amp; ruang meeting.</p>
-            <%= link_to "Buat Proyek Pertama", new_project_path, class: "mt-4 inline-flex rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500" %>
+          <div class="rounded-[12px] border border-dashed border-outline bg-panel p-10 text-center">
+            <p class="font-display text-base font-semibold text-on-surface">Belum ada proyek di tim <%= current_team.name %>.</p>
+            <p class="mt-1.5 text-xs text-on-surface-variant">Buat proyek pertama tim Anda untuk mulai menyusun Kanban Board &amp; ruang meeting.</p>
+            <%= link_to "Buat Proyek Pertama", new_project_path, class: ui_btn_primary_class("mt-5 text-xs") %>
           </div>
         <% end %>
       </div>
 
-      <!-- Kolom Kanan: Aktivitas & Anggota Tim Ini -->
-      <div class="space-y-6 lg:col-span-4">
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900">Aktivitas Real-Time Terbaru</h3>
+      <aside class="flex w-full shrink-0 flex-col justify-between border-t border-outline-variant bg-panel lg:w-[300px] lg:border-l lg:border-t-0 xl:w-[320px]">
+        <div class="p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-muted">Aktivitas Terbaru</h3>
+            <span class="font-mono text-[10px] text-on-surface-muted"><%= @recent_logs.size %></span>
+          </div>
+
           <% if @recent_logs.any? %>
-            <ul class="mt-3 space-y-3">
+            <ul class="space-y-3">
               <% @recent_logs.each do |log| %>
-                <li class="border-l-2 border-indigo-200 pl-3 text-xs">
-                  <p class="font-medium text-slate-800"><%= log.summary %></p>
-                  <p class="mt-0.5 text-[11px] text-slate-400">
-                    <%= log.project.key %> · <%= log.created_at.strftime("%d %b %H:%M") %>
-                  </p>
+                <li class="flex items-start gap-2.5 text-xs">
+                  <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary"></span>
+                  <div class="min-w-0 flex-1">
+                    <p class="leading-relaxed text-on-surface"><%= log.summary %></p>
+                    <p class="mt-0.5 font-mono text-[10px] text-on-surface-muted">
+                      <%= log.project.key %> · <%= log.created_at.strftime("%d %b %H:%M") %>
+                    </p>
+                  </div>
                 </li>
               <% end %>
             </ul>
           <% else %>
-            <p class="mt-3 text-xs text-slate-500">Belum ada aktivitas terbaru di tim ini.</p>
+            <p class="text-xs text-on-surface-muted">Belum ada aktivitas terbaru di tim ini.</p>
           <% end %>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <h3 class="text-sm font-bold text-slate-900">Anggota Tim Ini (<%= @team_memberships.size %>)</h3>
-          <ul class="mt-3 space-y-2.5">
+        <div class="border-t border-outline-variant bg-inset/60 p-5 space-y-3">
+          <h3 class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-muted">Anggota Tim (<%= @team_memberships.size %>)</h3>
+          <ul class="space-y-2.5">
             <% @team_memberships.each do |membership| %>
               <% member = membership.user %>
               <li class="flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <%= user_avatar(member, size_class: "w-8 h-8", text_class: "text-[11px]", lead: membership.lead?) %>
+                <div class="flex min-w-0 items-center gap-2">
+                  <%= user_avatar(member, size_class: "w-7 h-7", text_class: "text-[10px]", lead: membership.lead?) %>
                   <div class="min-w-0">
-                    <p class="truncate text-xs font-semibold text-slate-800"><%= member.full_name %></p>
-                    <p class="truncate text-[11px] text-slate-400"><%= member.job_title %></p>
+                    <p class="truncate text-xs font-semibold text-on-surface"><%= member.full_name %></p>
+                    <p class="truncate text-[10px] text-on-surface-muted"><%= member.job_title %></p>
                   </div>
                 </div>
-                <span class="rounded-md px-2 py-0.5 text-[10px] font-semibold <%= membership.lead? ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600' %>">
+                <span class="shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold <%= membership.lead? ? 'border-primary-border bg-primary-soft text-on-primary-soft' : 'border-outline-variant bg-card text-on-surface-variant' %>">
                   <%= membership.lead? ? "Lead" : "Member" %>
                 </span>
               </li>
             <% end %>
           </ul>
         </div>
-      </div>
+      </aside>
     </div>
   </div>
 <% end %>

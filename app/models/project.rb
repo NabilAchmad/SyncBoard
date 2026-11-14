@@ -1,6 +1,7 @@
 class Project < ApplicationRecord
   STATUSES = {
     "active" => "Aktif",
+    "completed" => "Selesai",
     "archived" => "Diarsipkan"
   }.freeze
 
@@ -20,6 +21,18 @@ class Project < ApplicationRecord
   validates :name, presence: true, length: { maximum: 100 }
   validates :key, presence: true, uniqueness: { scope: :team_id }, format: { with: /\A[A-Z0-9]{2,6}\z/, message: "harus 2-6 karakter huruf/angka" }
   validates :status, presence: true, inclusion: { in: STATUSES.keys }
+
+  def active?
+    status == "active"
+  end
+
+  def completed?
+    status == "completed"
+  end
+
+  def all_tasks_done?
+    tasks.exists? && !tasks.where.not(column_status: "done").exists?
+  end
 
   def next_task_code
     prefix = key.presence || "PRJ"
@@ -60,6 +73,13 @@ class Project < ApplicationRecord
       target: ActionView::RecordIdentifier.dom_id(self, :activity_feed),
       partial: "projects/activity_feed",
       locals: { project: self, activity_logs: activity_logs.includes(:user, :meeting).recent_first.limit(12) }
+    )
+
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [ self, :kanban ],
+      target: ActionView::RecordIdentifier.dom_id(self, :completion_banner),
+      partial: "projects/completion_banner",
+      locals: { project: self }
     )
   end
 

@@ -1,6 +1,6 @@
 class ProjectsController < ApplicationController
   before_action :require_team!, only: %i[new create]
-  before_action :set_project, only: %i[show edit update]
+  before_action :set_project, only: %i[show edit update complete]
 
   def index
     if current_team.present?
@@ -59,6 +59,29 @@ class ProjectsController < ApplicationController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def complete
+    unless @project.team.lead?(current_user)
+      redirect_to @project, alert: "Hanya Team Lead yang dapat menandai proyek selesai."
+      return
+    end
+
+    unless @project.all_tasks_done?
+      redirect_to @project, alert: "Seluruh tiket di Kanban harus masuk ke kolom Done terlebih dahulu."
+      return
+    end
+
+    if @project.active?
+      @project.update!(status: "completed")
+      @project.activity_logs.create!(
+        user: current_user,
+        summary: "#{current_user.full_name} menandai proyek #{@project.name} (#{@project.key}) Selesai"
+      )
+      @project.broadcast_kanban_refresh!
+    end
+
+    redirect_to @project, notice: "Proyek #{@project.name} ditandai Selesai."
   end
 
   private

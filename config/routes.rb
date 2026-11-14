@@ -21,6 +21,10 @@ Rails.application.routes.draw do
   resources :team_members, only: %i[index update destroy]
 
   resources :projects, only: %i[index new create show edit update] do
+    member do
+      patch :complete
+    end
+
     resources :tasks, only: %i[create edit update destroy] do
       member do
         patch :move

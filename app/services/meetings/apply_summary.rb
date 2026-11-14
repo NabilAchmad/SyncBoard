@@ -42,7 +42,7 @@ module Meetings
         @project.activity_logs.create!(
           user: @actor,
           meeting: @meeting,
-          summary: "#{@actor.full_name} menyetujui (ACC) rangkuman '#{@meeting.title}' — #{applied_count} perubahan diterapkan ke Kanban"
+          summary: "#{@actor.full_name} menyetujui (ACC) rangkuman '#{@meeting.title}': #{applied_count} perubahan diterapkan ke Kanban"
         )
 
         @meeting.meeting_messages.create!(
