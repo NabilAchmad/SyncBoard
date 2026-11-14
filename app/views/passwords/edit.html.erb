@@ -2,8 +2,8 @@
 
 <div class="rounded-[12px] border border-outline-variant bg-panel p-7 sm:p-8 shadow-sm">
   <div class="mb-6 flex flex-col items-center text-center">
-    <%= link_to new_session_path, class: "mb-3 inline-flex h-10 w-10 items-center justify-center rounded-[12px] border border-outline-variant bg-inset font-mono text-xs font-bold tracking-tight text-primary-text transition hover:border-primary-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
-      SB
+    <%= link_to new_session_path, class: "mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[12px] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
+      <%= brand_logo(size_class: "h-12 w-12") %>
     <% end %>
     <h1 class="font-display text-lg font-semibold tracking-tight text-on-surface">Atur Password Baru</h1>
     <p class="mt-1 text-xs leading-relaxed text-on-surface-variant">Masukkan password baru Anda untuk mengakses kembali akun SyncBoard.</p>

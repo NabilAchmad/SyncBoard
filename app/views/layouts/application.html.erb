@@ -30,7 +30,7 @@
             <details class="group relative min-w-0 flex-1">
               <summary class="flex min-h-11 sm:min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-[8px] px-1.5 py-1 text-left transition hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <span class="flex min-w-0 items-center gap-2">
-                  <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] border border-primary-border bg-primary-soft font-mono text-[11px] font-bold text-on-primary-soft">SB</span>
+                  <%= brand_logo(size_class: "h-8 w-8") %>
                   <span class="min-w-0">
                     <span class="block truncate font-display text-[13px] font-semibold leading-tight text-on-surface"><%= current_team.name %></span>
                     <span class="block truncate text-[10px] text-on-surface-muted"><%= current_team_lead? ? "Team Lead" : "Member" %></span>
@@ -69,7 +69,7 @@
             </details>
           <% else %>
             <%= link_to root_path, class: "flex min-h-11 sm:min-h-9 items-center gap-2 rounded-[8px] px-1.5 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" do %>
-              <span class="inline-flex h-7 w-7 items-center justify-center rounded-[8px] border border-primary-border bg-primary-soft font-mono text-[11px] font-bold text-on-primary-soft">SB</span>
+              <%= brand_logo(size_class: "h-8 w-8") %>
               <span class="font-display text-[13px] font-semibold text-on-surface">SyncBoard</span>
             <% end %>
           <% end %>

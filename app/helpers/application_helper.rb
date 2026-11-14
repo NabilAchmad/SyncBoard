@@ -134,6 +134,10 @@ module ApplicationHelper
     )
   end
 
+  def brand_logo(size_class: "h-8 w-8")
+    image_tag("/icon.svg?v=2", alt: "SyncBoard", class: "#{size_class} shrink-0 object-contain")
+  end
+
   def sidebar_link_class(path)
     base = "flex min-h-11 sm:min-h-9 items-center gap-2.5 rounded-[8px] px-2.5 py-2 sm:py-1.5 text-[13px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     if current_page?(path)
