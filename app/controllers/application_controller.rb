@@ -40,7 +40,7 @@ class ApplicationController < ActionController::Base
       @sidebar_active_projects ||= if defined?(@projects) && @projects.is_a?(Array) && @projects.all? { |project| project.team_id == current_team.id }
         @projects.select(&:active?).first(10)
       else
-        current_team.projects.active.ordered.limit(10).to_a
+        current_team.projects.active.ordered.select(:id, :name, :key, :status, :team_id).limit(10).to_a
       end
     end
 

@@ -45,6 +45,8 @@ class QueryPerformanceTest < ActionDispatch::IntegrationTest
     index_queries = capture_queries { get root_path }
     assert_response :success
     assert_operator index_queries.size, :<=, 13, "Expected GET / <= 13 queries, got #{index_queries.size}:\n#{index_queries.join("\n")}"
+    assert_includes response.body, "0% (0/5)"
+    assert_includes response.body, "Gabung Room · #{@meeting.room_code}"
 
     show_queries = capture_queries { get project_path(@project) }
     assert_response :success

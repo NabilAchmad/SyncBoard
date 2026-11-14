@@ -5,7 +5,6 @@ class ProjectsController < ApplicationController
   def index
     if current_team.present?
       @projects = current_team.projects
-        .includes(:tasks, :meetings)
         .ordered
         .to_a
       @team_memberships = current_team.team_memberships
@@ -24,15 +23,43 @@ class ProjectsController < ApplicationController
       )
 
       projects_by_id = @projects.index_by(&:id)
-      @recent_logs = if projects_by_id.any?
-        ActivityLog.where(project_id: projects_by_id.keys).recent_first.limit(10).to_a.tap do |logs|
-          preload_records_with_known_map(logs, :project_id, :project, projects_by_id)
+      if projects_by_id.any?
+        project_ids = projects_by_id.keys
+        default_counts = Task::COLUMNS.keys.index_with { 0 }
+        @task_counts_by_project = project_ids.index_with { default_counts.dup }
+        Task.where(project_id: project_ids).group(:project_id, :column_status).count.each do |(project_id, column_status), total|
+          counts = @task_counts_by_project[project_id]
+          counts[column_status] = total if counts&.key?(column_status)
         end
+
+        open_first_order = Arel.sql(
+          "CASE WHEN ended_at IS NULL AND status IN ('live', 'summary_ready') THEN 0 ELSE 1 END ASC, started_at DESC, id DESC"
+        )
+        @latest_meetings_by_project = {}
+        Meeting.where(project_id: project_ids)
+          .select(:id, :project_id, :room_code, :status, :ended_at, :started_at)
+          .order(open_first_order)
+          .each do |meeting|
+            @latest_meetings_by_project[meeting.project_id] ||= meeting
+          end
+
+        @recent_logs = ActivityLog.where(project_id: project_ids)
+          .select(:id, :project_id, :summary, :created_at)
+          .recent_first
+          .limit(10)
+          .to_a
+          .tap do |logs|
+            preload_records_with_known_map(logs, :project_id, :project, projects_by_id)
+          end
       else
-        []
+        @task_counts_by_project = {}
+        @latest_meetings_by_project = {}
+        @recent_logs = []
       end
     else
       @projects = []
+      @task_counts_by_project = {}
+      @latest_meetings_by_project = {}
       @recent_logs = []
       @team_memberships = []
       @new_team = Team.new

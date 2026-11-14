@@ -120,5 +120,15 @@ class LiveReadinessTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[data-meeting-room-auto-join-call-value='false']"
     assert_select "[data-meeting-room-ice-servers-value]"
+    assert_no_match(/Material\+Symbols\+Outlined/, response.body)
+    assert_no_match(/material-symbols-outlined/, response.body)
+    assert_select "[data-role='icon'] svg path", count: 6
+  end
+
+  test "login page avoids external icon font blocking and provides submit feedback" do
+    get new_session_path
+    assert_response :success
+    assert_no_match(/Material\+Symbols\+Outlined/, response.body)
+    assert_select "input[type='submit'][data-turbo-submits-with]"
   end
 end

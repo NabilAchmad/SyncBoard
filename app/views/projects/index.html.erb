@@ -102,11 +102,10 @@
         <% if @projects.any? %>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <% @projects.each do |project| %>
-              <% counts = project.task_counts_by_column %>
+              <% counts = (@task_counts_by_project && @task_counts_by_project[project.id]) || project.task_counts_by_column %>
               <% total_tasks = counts.values.sum %>
               <% done_pct = total_tasks.positive? ? ((counts["done"].to_f / total_tasks) * 100).round : 0 %>
-              <% active_meeting = project.active_meeting %>
-              <% latest_meeting = active_meeting || project.meetings.max_by { |m| [ m.started_at, m.id ] } %>
+              <% latest_meeting = @latest_meetings_by_project ? @latest_meetings_by_project[project.id] : (project.active_meeting || project.meetings.max_by { |m| [ m.started_at, m.id ] }) %>
 
               <article class="flex flex-col justify-between rounded-[12px] border border-outline-variant bg-card p-5 shadow-2xs transition hover:border-outline">
                 <div>
