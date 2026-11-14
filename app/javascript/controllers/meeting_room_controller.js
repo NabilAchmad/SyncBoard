@@ -40,6 +40,9 @@ export default class extends Controller {
     "saveStatus",
     "liveCaptions",
     "quickCaptionInput",
+    "captionTagButton",
+    "summaryTranscriptField",
+    "endCallTranscriptField",
     "messageForm",
     "messageBody",
     "rightTab",
@@ -419,6 +422,7 @@ export default class extends Controller {
         this.leaveCall({
           reason: `Panggilan rapat telah diakhiri oleh ${data.ended_by || "Host"}.`
         })
+        this.activateRightTab("summary")
         break
     }
   }
@@ -1012,9 +1016,40 @@ export default class extends Controller {
     this.updateParticipantCount()
   }
 
-  endMeetingSession() {
+  endMeetingSession(event) {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
+    if (this.hasTranscriptInputTarget) {
+      const hiddenField = event?.currentTarget?.querySelector("[data-meeting-room-target='endCallTranscriptField']") ||
+        (this.hasEndCallTranscriptFieldTarget ? this.endCallTranscriptFieldTarget : null)
+      if (hiddenField) hiddenField.value = this.transcriptInputTarget.value
+    }
     this.closeEndCallModal()
     this.leaveCall({ reason: "Mengakhiri panggilan untuk semua peserta..." })
+  }
+
+  syncTranscriptBeforeGenerate(event) {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
+    if (!this.hasTranscriptInputTarget) return
+
+    const latest = this.transcriptInputTarget.value
+    const field = event?.currentTarget?.querySelector("[data-meeting-room-target='summaryTranscriptField']")
+    if (field) {
+      field.value = latest
+    } else if (this.hasSummaryTranscriptFieldTarget) {
+      this.summaryTranscriptFieldTargets.forEach((el) => { el.value = latest })
+    }
+  }
+
+  onSummaryGenerated(event) {
+    if (event?.detail?.success) {
+      this.activateRightTab("summary")
+    }
   }
 
   async toggleScreenShare() {
@@ -1386,6 +1421,45 @@ export default class extends Controller {
     }
   }
 
+  selectCaptionTag(event) {
+    const tag = event.currentTarget.dataset.tag || "point"
+    this.activeCaptionTag = tag
+
+    if (this.hasCaptionTagButtonTarget) {
+      this.captionTagButtonTargets.forEach((button) => {
+        const active = button.dataset.tag === tag
+        button.setAttribute("aria-pressed", active ? "true" : "false")
+        button.className = active
+          ? "rounded-[8px] bg-panel px-2 py-1 text-[11px] font-semibold text-on-surface shadow-xs transition cursor-pointer"
+          : "rounded-[8px] px-2 py-1 text-[11px] font-semibold text-on-surface-muted hover:text-on-surface transition cursor-pointer"
+      })
+    }
+
+    if (this.hasQuickCaptionInputTarget) {
+      const placeholders = {
+        point: "Catat poin atau tandai highlight...",
+        decision: "Tulis keputusan rapat...",
+        action: "Tulis aksi/task (misal: Fix login untuk Raka besok)...",
+        blocker: "Tulis blocker atau risiko..."
+      }
+      this.quickCaptionInputTarget.placeholder = placeholders[tag] || placeholders.point
+      this.quickCaptionInputTarget.focus()
+    }
+  }
+
+  captionPrefixForTag(tag) {
+    const prefixes = {
+      decision: "[KEPUTUSAN] ",
+      action: "[AKSI] ",
+      blocker: "[BLOCKER] "
+    }
+    return prefixes[tag] || ""
+  }
+
+  formatTaggedCaptionLine(speaker, text, tag = "point") {
+    return `${this.captionPrefixForTag(tag)}${speaker}: ${text}`
+  }
+
   submitQuickCaption(event) {
     event.preventDefault()
     if (!this.hasQuickCaptionInputTarget) return
@@ -1393,12 +1467,16 @@ export default class extends Controller {
     const text = this.quickCaptionInputTarget.value.trim()
     if (!text) return
 
-    this.appendTranscriptLine(`${this.userNameValue}: ${text}`)
+    const tag = this.activeCaptionTag || "point"
+    const formattedLine = this.formatTaggedCaptionLine(this.userNameValue, text, tag)
+
+    this.appendTranscriptLine(formattedLine)
     this.subscription?.perform("transcript_chunk", {
       client_id: this.clientId,
-      text
+      text,
+      tag
     })
-    this.setLiveCaption(`${this.userNameValue}: ${text}`, "indigo")
+    this.setLiveCaption(formattedLine, tag === "blocker" || tag === "decision" ? "amber" : "indigo")
     this.quickCaptionInputTarget.value = ""
     this.quickCaptionInputTarget.focus()
   }
@@ -1420,6 +1498,11 @@ export default class extends Controller {
   switchRightTab(event) {
     const activeKey = event.currentTarget.dataset.meetingTab
     if (!activeKey) return
+    this.activateRightTab(activeKey)
+  }
+
+  activateRightTab(activeKey) {
+    if (!activeKey) return
 
     this.rightTabTargets.forEach((tab) => {
       const selected = tab.dataset.meetingTab === activeKey
@@ -1437,9 +1520,9 @@ export default class extends Controller {
   }
 
   onRemoteTranscriptChunk(data) {
-    const line = `${data.speaker}: ${data.text}`
+    const line = this.formatTaggedCaptionLine(data.speaker, data.text, data.tag || "point")
     this.appendTranscriptLine(line, false)
-    this.setLiveCaption(line, "indigo")
+    this.setLiveCaption(line, data.tag === "blocker" || data.tag === "decision" ? "amber" : "indigo")
   }
 
   appendTranscriptLine(line, shouldPersist = true) {

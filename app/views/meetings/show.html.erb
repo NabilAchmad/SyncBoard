@@ -71,22 +71,59 @@
       </div>
 
       <div class="space-y-2 shrink-0">
-        <div class="grid gap-2 sm:grid-cols-12 items-center">
-          <div data-meeting-room-target="liveCaptions" class="sm:col-span-7 truncate rounded-[10px] border border-outline-variant bg-panel px-3 py-2 text-xs text-on-surface-variant">
+        <div class="grid gap-2 lg:grid-cols-12 items-center">
+          <div data-meeting-room-target="liveCaptions" class="lg:col-span-5 truncate rounded-[10px] border border-outline-variant bg-panel px-3 py-2 text-xs text-on-surface-variant">
             Live captions siap digunakan.
           </div>
 
-          <form data-action="submit->meeting-room#submitQuickCaption" class="flex items-center gap-1.5 sm:col-span-5">
-            <input type="text"
-                   data-meeting-room-target="quickCaptionInput"
-                   aria-label="Quick caption"
-                   placeholder="Ketik poin cepat..."
-                   class="min-h-11 sm:min-h-8 min-w-0 flex-1 rounded-[10px] border border-outline-variant bg-input px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25">
-            <button type="submit"
-                    aria-label="Kirim Caption"
-                    class="inline-flex min-h-11 sm:min-h-8 items-center justify-center rounded-[10px] border border-outline-variant bg-panel px-3 py-1.5 text-xs font-semibold text-on-surface hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0">
-              Kirim
-            </button>
+          <form data-action="submit->meeting-room#submitQuickCaption" class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 lg:col-span-7">
+            <div role="group" aria-label="Kategori highlight" class="inline-flex items-center rounded-[10px] border border-outline-variant bg-inset p-0.5 shrink-0">
+              <button type="button"
+                      data-tag="point"
+                      data-meeting-room-target="captionTagButton"
+                      data-action="click->meeting-room#selectCaptionTag"
+                      aria-pressed="true"
+                      class="rounded-[8px] bg-panel px-2 py-1 text-[11px] font-semibold text-on-surface shadow-xs transition cursor-pointer">
+                Poin
+              </button>
+              <button type="button"
+                      data-tag="decision"
+                      data-meeting-room-target="captionTagButton"
+                      data-action="click->meeting-room#selectCaptionTag"
+                      aria-pressed="false"
+                      class="rounded-[8px] px-2 py-1 text-[11px] font-semibold text-on-surface-muted hover:text-on-surface transition cursor-pointer">
+                Keputusan
+              </button>
+              <button type="button"
+                      data-tag="action"
+                      data-meeting-room-target="captionTagButton"
+                      data-action="click->meeting-room#selectCaptionTag"
+                      aria-pressed="false"
+                      class="rounded-[8px] px-2 py-1 text-[11px] font-semibold text-on-surface-muted hover:text-on-surface transition cursor-pointer">
+                Aksi
+              </button>
+              <button type="button"
+                      data-tag="blocker"
+                      data-meeting-room-target="captionTagButton"
+                      data-action="click->meeting-room#selectCaptionTag"
+                      aria-pressed="false"
+                      class="rounded-[8px] px-2 py-1 text-[11px] font-semibold text-on-surface-muted hover:text-on-surface transition cursor-pointer">
+                Blocker
+              </button>
+            </div>
+
+            <div class="flex flex-1 min-w-0 items-center gap-1.5 w-full sm:w-auto">
+              <input type="text"
+                     data-meeting-room-target="quickCaptionInput"
+                     aria-label="Quick caption"
+                     placeholder="Catat poin atau tandai highlight..."
+                     class="min-h-11 sm:min-h-8 min-w-0 flex-1 rounded-[10px] border border-outline-variant bg-input px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25">
+              <button type="submit"
+                      aria-label="Kirim Caption"
+                      class="inline-flex min-h-11 sm:min-h-8 items-center justify-center rounded-[10px] border border-outline-variant bg-panel px-3 py-1.5 text-xs font-semibold text-on-surface hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0">
+                Kirim
+              </button>
+            </div>
           </form>
         </div>
 
@@ -238,17 +275,19 @@
           <span data-meeting-room-target="saveStatus" class="font-mono text-[10px] text-on-surface-muted"></span>
         </div>
 
-        <%= form_with url: generate_summary_project_meeting_path(@project, @meeting), method: :post, class: "flex flex-1 flex-col gap-3 min-h-0" do %>
+        <%= form_with url: generate_summary_project_meeting_path(@project, @meeting), method: :post,
+          data: { action: "turbo:submit-end->meeting-room#onSummaryGenerated" },
+          class: "flex flex-1 flex-col gap-3 min-h-0" do %>
           <%= text_area_tag :transcript_text, @meeting.transcript_text,
             rows: 10,
             data: {
               meeting_room_target: "transcriptInput",
               action: "input->meeting-room#scheduleSaveTranscript"
             },
-            placeholder: "Catat poin diskusi atau gunakan Live Speech-to-Text.\nContoh: #{first_code} sudah selesai (done), PIC Budi.",
+            placeholder: "Catat poin diskusi atau gunakan highlight Keputusan/Aksi/Blocker.\nContoh: [AKSI] Integrasi endpoint webhook untuk Nabil besok prioritas high.",
             class: "flex-1 min-h-[220px] w-full rounded-[10px] border border-outline-variant bg-input p-3 font-mono text-xs leading-relaxed text-on-surface placeholder:text-on-surface-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25" %>
 
-          <%= submit_tag "Generate Rangkuman & Usulan Kanban", class: (has_pending_acc ? ui_btn_secondary_class("w-full py-2.5 text-xs rounded-[10px]") : ui_btn_primary_class("w-full py-2.5 text-xs rounded-[10px]")) %>
+          <%= submit_tag "Ambil Inti & Usulan Kanban", class: (has_pending_acc ? ui_btn_secondary_class("w-full py-2.5 text-xs rounded-[10px]") : ui_btn_primary_class("w-full py-2.5 text-xs rounded-[10px]")) %>
         <% end %>
       </div>
     </aside>
@@ -270,10 +309,15 @@
           </div>
 
           <div class="space-y-2.5 pt-1">
-            <%= button_to "Akhiri untuk Semua", end_call_project_meeting_path(@project, @meeting),
+            <%= form_with url: end_call_project_meeting_path(@project, @meeting),
               method: :post,
-              data: { action: "meeting-room#endMeetingSession" },
-              class: "inline-flex min-h-11 w-full items-center justify-center rounded-[10px] bg-danger px-4 py-2.5 text-xs font-semibold text-on-danger hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger transition cursor-pointer" %>
+              data: { action: "submit->meeting-room#endMeetingSession" } do %>
+              <%= hidden_field_tag :transcript_text, @meeting.transcript_text, data: { meeting_room_target: "endCallTranscriptField" } %>
+              <button type="submit"
+                      class="inline-flex min-h-11 w-full items-center justify-center rounded-[10px] bg-danger px-4 py-2.5 text-xs font-semibold text-on-danger hover:bg-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger transition cursor-pointer">
+                Akhiri untuk Semua
+              </button>
+            <% end %>
 
             <button type="button"
                     data-action="meeting-room#leaveCallAndCloseModal"

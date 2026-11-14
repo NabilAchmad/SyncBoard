@@ -74,11 +74,15 @@ class MeetingChannel < ApplicationCable::Channel
     text = data["text"].to_s.strip
     return if text.blank?
 
+    allowed_tags = %w[point decision action blocker].freeze
+    tag = allowed_tags.include?(data["tag"].to_s) ? data["tag"].to_s : "point"
+
     self.class.broadcast_to(@meeting, {
       type: "transcript_chunk",
       sender_id: data["client_id"],
       speaker: current_user.full_name,
-      text: text
+      text: text,
+      tag: tag
     })
   end
 

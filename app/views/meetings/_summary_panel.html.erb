@@ -23,11 +23,108 @@
     </div>
   <% end %>
 
-  <% if meeting.summary_text.present? %>
-    <div class="rounded-[10px] border border-outline-variant bg-inset p-3 text-xs leading-relaxed text-on-surface whitespace-pre-line font-sans"><%= meeting.summary_text %></div>
+  <% parsed_summary = parse_fathom_summary(meeting.summary_text) %>
+  <% if parsed_summary.present? %>
+    <div class="space-y-2.5">
+      <% unless meeting.approved? %>
+        <div class="flex items-center justify-between gap-2 rounded-xl border border-outline-variant bg-inset/70 px-2.5 py-2">
+          <span class="text-[11px] font-medium text-on-surface-muted">Ekstrak inti pembahasan terbaru</span>
+          <%= form_with url: generate_summary_project_meeting_path(project, meeting), method: :post,
+            data: { action: "submit->meeting-room#syncTranscriptBeforeGenerate turbo:submit-end->meeting-room#onSummaryGenerated" } do %>
+            <%= hidden_field_tag :transcript_text, meeting.transcript_text, data: { meeting_room_target: "summaryTranscriptField" } %>
+            <button type="submit"
+              class="inline-flex items-center gap-1 rounded-lg border border-primary-border bg-card px-2.5 py-1 text-[11px] font-semibold text-on-primary-soft hover:bg-primary-soft transition cursor-pointer">
+              <%= material_icon("auto_awesome", size: 13) %>
+              <span>Rangkum Ulang</span>
+            </button>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if parsed_summary[:legacy_text].present? %>
+        <div class="rounded-[10px] border border-outline-variant bg-inset p-3 text-xs leading-relaxed text-on-surface whitespace-pre-line font-sans"><%= parsed_summary[:legacy_text] %></div>
+      <% else %>
+        <% if parsed_summary[:tldr].present? %>
+          <div class="rounded-xl border border-primary-border bg-primary-soft/50 p-3 space-y-1">
+            <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-primary-soft">
+              <%= material_icon("auto_awesome", size: 13) %>
+              <span>TL;DR Inti Rapat</span>
+            </div>
+            <p class="text-xs leading-relaxed font-medium text-on-surface"><%= parsed_summary[:tldr] %></p>
+          </div>
+        <% end %>
+
+        <% if parsed_summary[:decisions].any? %>
+          <div class="rounded-xl border border-primary-border/70 bg-inset p-3 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-on-primary-soft">Keputusan Disepakati</span>
+              <span class="font-mono text-[10px] font-semibold text-on-primary-soft"><%= parsed_summary[:decisions].size %></span>
+            </div>
+            <ul class="space-y-1.5 text-xs text-on-surface">
+              <% parsed_summary[:decisions].each do |decision| %>
+                <li class="flex items-start gap-2 leading-relaxed">
+                  <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
+                  <span><%= decision %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <% if parsed_summary[:blockers].any? %>
+          <div class="rounded-xl border border-danger-border bg-danger-soft/50 p-3 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-on-danger-soft">Blocker &amp; Risiko</span>
+              <span class="font-mono text-[10px] font-semibold text-on-danger-soft"><%= parsed_summary[:blockers].size %></span>
+            </div>
+            <ul class="space-y-1.5 text-xs text-on-surface">
+              <% parsed_summary[:blockers].each do |blocker| %>
+                <li class="flex items-start gap-2 leading-relaxed">
+                  <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-danger shrink-0"></span>
+                  <span><%= blocker %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <% if parsed_summary[:key_points].any? %>
+          <div class="rounded-xl border border-outline-variant bg-inset p-3 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-muted">Poin Pembahasan Utama</span>
+              <span class="font-mono text-[10px] font-semibold text-on-surface-muted"><%= parsed_summary[:key_points].size %></span>
+            </div>
+            <ul class="space-y-1.5 text-xs text-on-surface">
+              <% parsed_summary[:key_points].each do |point| %>
+                <li class="flex items-start gap-2 leading-relaxed">
+                  <span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-on-surface-muted/70 shrink-0"></span>
+                  <span><%= point %></span>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
   <% else %>
-    <div class="rounded-[10px] border border-dashed border-outline-variant bg-inset/60 p-4 text-center text-xs text-on-surface-muted">
-      Belum ada rangkuman. Buka tab <strong class="text-on-surface">Transcript</strong> lalu klik Generate.
+    <div class="rounded-xl border border-dashed border-outline-variant bg-inset/60 p-4 text-center space-y-2.5">
+      <div class="space-y-1">
+        <p class="text-xs font-semibold text-on-surface">Rangkuman Inti Siap Dibuat</p>
+        <p class="text-[11px] leading-relaxed text-on-surface-muted">
+          Tandai <strong class="text-on-surface">Keputusan / Aksi / Blocker</strong> di kolom poin cepat, gunakan Live Captions, atau tulis di Chat Live.
+        </p>
+      </div>
+      <% unless meeting.approved? %>
+        <%= form_with url: generate_summary_project_meeting_path(project, meeting), method: :post,
+          data: { action: "submit->meeting-room#syncTranscriptBeforeGenerate turbo:submit-end->meeting-room#onSummaryGenerated" } do %>
+          <%= hidden_field_tag :transcript_text, meeting.transcript_text, data: { meeting_room_target: "summaryTranscriptField" } %>
+          <button type="submit"
+            class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-on-primary hover:bg-primary-hover transition cursor-pointer">
+            <%= material_icon("auto_awesome", size: 14) %>
+            <span>Rangkum Inti Sekarang</span>
+          </button>
+        <% end %>
+      <% end %>
     </div>
   <% end %>
 

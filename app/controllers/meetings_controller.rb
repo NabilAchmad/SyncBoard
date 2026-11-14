@@ -92,7 +92,7 @@ class MeetingsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream { render_summary_panel_turbo_stream }
-      format.html { redirect_to project_meeting_path(@project, @meeting), notice: "Rangkuman & usulan perubahan Kanban berhasil dibuat. Menunggu ACC Team Lead." }
+      format.html { redirect_to project_meeting_path(@project, @meeting), notice: "Inti rapat & usulan Kanban berhasil dirangkum. Menunggu ACC Team Lead." }
     end
   end
 
@@ -152,12 +152,16 @@ class MeetingsController < ApplicationController
   end
 
   def end_call
-    has_notes = @meeting.transcript_text.present? || @meeting.meeting_messages.where(kind: %w[decision note]).exists?
+    if params[:transcript_text].present? && params[:transcript_text].to_s != @meeting.transcript_text.to_s
+      @meeting.update!(transcript_text: params[:transcript_text].to_s)
+    end
+
+    has_notes = @meeting.transcript_text.present? || @meeting.meeting_messages.where.not(kind: "system").exists?
 
     if has_notes && !@meeting.approved?
       @meeting.update!(ended_at: @meeting.ended_at || Time.current)
       Meetings::SummaryGenerator.new(meeting: @meeting, actor: current_user).call
-      notice_msg = "Panggilan diakhiri & rangkuman otomatis dibuat. Menunggu ACC Team Lead."
+      notice_msg = "Panggilan diakhiri & inti rapat otomatis dirangkum. Menunggu ACC Team Lead."
     elsif !@meeting.approved? && !@meeting.summary_ready?
       @meeting.update!(status: "ended", ended_at: @meeting.ended_at || Time.current)
       @meeting.broadcast_summary_refresh!

@@ -268,4 +268,35 @@ module ApplicationHelper
       { urls: "stun:stun1.l.google.com:19302" }
     ]
   end
+
+  def parse_fathom_summary(summary_text)
+    raw = summary_text.to_s.strip
+    return nil if raw.blank?
+
+    sections = {}
+    current_section = nil
+
+    raw.each_line do |line|
+      stripped = line.strip
+      next if stripped.blank?
+
+      if (header = stripped.match(/\A\[(TL;DR|POIN KUNCI|KEPUTUSAN|BLOCKER|TINDAK LANJUT)\]\z/i))
+        current_section = header[1].upcase
+        sections[current_section] ||= []
+      elsif current_section
+        sections[current_section] << stripped.sub(/\A-\s*/, "")
+      end
+    end
+
+    return { legacy_text: raw } if sections.empty?
+
+    {
+      tldr: Array(sections["TL;DR"]).join(" "),
+      key_points: Array(sections["POIN KUNCI"]),
+      decisions: Array(sections["KEPUTUSAN"]),
+      blockers: Array(sections["BLOCKER"]),
+      follow_ups: Array(sections["TINDAK LANJUT"]),
+      legacy_text: nil
+    }
+  end
 end
