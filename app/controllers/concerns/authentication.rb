@@ -33,7 +33,7 @@ module Authentication
       return unless request&.env&.key?("action_dispatch.key_generator")
       return unless cookies.signed[:session_id]
 
-      session = Session.includes(:user, :current_team).find_by(id: cookies.signed[:session_id])
+      session = Session.eager_load(:user).preload(user: [ { avatar_attachment: :blob }, { team_memberships: :team } ]).find_by(id: cookies.signed[:session_id])
       session if session&.user&.active?
     end
 

@@ -31,7 +31,19 @@ class Project < ApplicationRecord
   end
 
   def all_tasks_done?
-    tasks.exists? && !tasks.where.not(column_status: "done").exists?
+    if tasks.loaded?
+      tasks.any? && tasks.all? { |task| task.column_status == "done" }
+    else
+      tasks.exists? && !tasks.where.not(column_status: "done").exists?
+    end
+  end
+
+  def active_meeting
+    if meetings.loaded?
+      meetings.select(&:call_open?).max_by { |m| [ m.started_at, m.id ] }
+    else
+      meetings.open_rooms.recent_first.first
+    end
   end
 
   def next_task_code
@@ -59,7 +71,7 @@ class Project < ApplicationRecord
   end
 
   def broadcast_kanban_refresh!
-    tasks_by_column = tasks.includes(:assignee, :source_meeting).ordered_for_board.group_by(&:column_status)
+    tasks_by_column = tasks.includes(:source_meeting, assignee: { avatar_attachment: :blob }).ordered_for_board.group_by(&:column_status)
 
     Turbo::StreamsChannel.broadcast_replace_to(
       [ self, :kanban ],
@@ -72,7 +84,7 @@ class Project < ApplicationRecord
       [ self, :kanban ],
       target: ActionView::RecordIdentifier.dom_id(self, :activity_feed),
       partial: "projects/activity_feed",
-      locals: { project: self, activity_logs: activity_logs.includes(:user, :meeting).recent_first.limit(12) }
+      locals: { project: self, activity_logs: activity_logs.includes(:meeting).recent_first.limit(12).to_a }
     )
 
     Turbo::StreamsChannel.broadcast_replace_to(
@@ -80,6 +92,36 @@ class Project < ApplicationRecord
       target: ActionView::RecordIdentifier.dom_id(self, :completion_banner),
       partial: "projects/completion_banner",
       locals: { project: self }
+    )
+
+    broadcast_meeting_refresh!(include_activity: false)
+  end
+
+  def broadcast_meeting_refresh!(include_activity: true)
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [ self, :kanban ],
+      target: ActionView::RecordIdentifier.dom_id(self, :meeting_action),
+      partial: "projects/meeting_action",
+      locals: { project: self }
+    )
+
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [ self, :kanban ],
+      target: ActionView::RecordIdentifier.dom_id(self, :meetings_panel),
+      partial: "projects/meetings_panel",
+      locals: {
+        project: self,
+        meetings: meetings.recent_first.to_a
+      }
+    )
+
+    return unless include_activity
+
+    Turbo::StreamsChannel.broadcast_replace_to(
+      [ self, :kanban ],
+      target: ActionView::RecordIdentifier.dom_id(self, :activity_feed),
+      partial: "projects/activity_feed",
+      locals: { project: self, activity_logs: activity_logs.includes(:meeting).recent_first.limit(12).to_a }
     )
   end
 

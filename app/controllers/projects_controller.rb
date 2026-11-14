@@ -4,19 +4,36 @@ class ProjectsController < ApplicationController
 
   def index
     if current_team.present?
-      @projects = current_team.projects.includes(:owner, :tasks, :meetings).ordered
-      @recent_logs = ActivityLog.joins(:project)
-        .where(projects: { team_id: current_team.id })
-        .includes(:project, :user, :meeting)
-        .recent_first
-        .limit(10)
+      @projects = current_team.projects
+        .includes(:tasks, :meetings)
+        .ordered
+        .to_a
       @team_memberships = current_team.team_memberships
         .includes(user: { avatar_attachment: :blob })
         .joins(:user)
         .merge(User.active.ordered_by_name)
+        .to_a
+
+      users_by_id = @team_memberships.each_with_object({}) { |membership, map| map[membership.user_id] = membership.user }
+      preload_records_with_known_map(
+        @projects,
+        :owner_id,
+        :owner,
+        users_by_id,
+        fallback_preload: { owner: { avatar_attachment: :blob } }
+      )
+
+      projects_by_id = @projects.index_by(&:id)
+      @recent_logs = if projects_by_id.any?
+        ActivityLog.where(project_id: projects_by_id.keys).recent_first.limit(10).to_a.tap do |logs|
+          preload_records_with_known_map(logs, :project_id, :project, projects_by_id)
+        end
+      else
+        []
+      end
     else
-      @projects = Project.none
-      @recent_logs = ActivityLog.none
+      @projects = []
+      @recent_logs = []
       @team_memberships = []
       @new_team = Team.new
     end
@@ -42,12 +59,30 @@ class ProjectsController < ApplicationController
   end
 
   def show
-    @tasks_by_column = @project.tasks.includes(:assignee, :source_meeting).ordered_for_board.group_by(&:column_status)
-    @team_members = @project.team.users.active.ordered_by_name
-    @meetings = @project.meetings.includes(:host, :approved_by, :meeting_action_items).recent_first
-    @activity_logs = @project.activity_logs.includes(:user, :meeting).recent_first.limit(12)
-    @new_task = @project.tasks.build(column_status: "todo", priority: "medium")
-    @new_meeting = @project.meetings.build
+    @team_members = @project.team.active_members_with_avatars
+    users_by_id = @team_members.index_by(&:id)
+
+    @meetings = @project.meetings.recent_first.to_a
+    @project.association(:meetings).target = @meetings
+    meetings_by_id = @meetings.index_by(&:id)
+
+    all_tasks = @project.tasks.ordered_for_board.to_a
+    preload_records_with_known_map(
+      all_tasks,
+      :assignee_id,
+      :assignee,
+      users_by_id,
+      fallback_preload: { assignee: { avatar_attachment: :blob } }
+    )
+    preload_records_with_known_map(all_tasks, :source_meeting_id, :source_meeting, meetings_by_id)
+    @project.association(:tasks).target = all_tasks
+    @tasks_by_column = all_tasks.group_by(&:column_status)
+
+    @activity_logs = @project.activity_logs.recent_first.limit(12).to_a
+    preload_records_with_known_map(@activity_logs, :meeting_id, :meeting, meetings_by_id)
+
+    @new_task = Task.new(project: @project, column_status: "todo", priority: "medium")
+    @new_meeting = Meeting.new(project: @project)
   end
 
   def edit

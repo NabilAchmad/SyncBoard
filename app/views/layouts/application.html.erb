@@ -83,7 +83,7 @@
         </div>
 
         <div class="no-scrollbar flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
-          <% active_projects = (authenticated? && current_team) ? current_team.projects.active.ordered.limit(10) : [] %>
+          <% active_projects = sidebar_active_projects %>
 
           <% if authenticated? && current_team && active_projects.any? %>
             <div>

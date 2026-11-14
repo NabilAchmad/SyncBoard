@@ -7,7 +7,7 @@
       <%= render "shared/form_errors", record: @user %>
 
       <div class="flex flex-col gap-4 border-b border-outline-variant pb-5 sm:flex-row sm:items-center">
-        <%= user_avatar(@user, size_class: "w-14 h-14", text_class: "text-lg") %>
+        <%= user_avatar(@user, size_class: "w-14 h-14", text_class: "text-lg", lead: current_team_lead?) %>
         <div class="flex-1 space-y-2">
           <div class="flex flex-wrap items-center gap-2">
             <span class="rounded-md border border-outline-variant bg-inset px-2 py-0.5 font-mono text-[11px] font-semibold text-on-surface"><%= @user.employee_code %></span>

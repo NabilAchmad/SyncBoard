@@ -6,22 +6,37 @@ class MeetingsController < ApplicationController
   before_action :require_host!, only: :end_call
 
   def create
-    @meeting = @project.meetings.build(meeting_params)
-    @meeting.host = current_user
-    @meeting.status = "live"
+    existing_meeting = nil
+    created = false
 
-    if @meeting.save
-      @project.activity_logs.create!(
-        user: current_user,
-        meeting: @meeting,
-        summary: "#{current_user.full_name} membuka ruang diskusi '#{@meeting.title}' (#{@meeting.room_code})"
-      )
-      @meeting.meeting_messages.create!(
-        user: current_user,
-        kind: "system",
-        body: "Ruang diskusi & video call dibuka oleh #{current_user.full_name}."
-      )
+    @project.with_lock do
+      existing_meeting = @project.meetings.open_rooms.recent_first.first
+      next if existing_meeting
 
+      @meeting = @project.meetings.build(meeting_params)
+      @meeting.host = current_user
+      @meeting.status = "live"
+
+      if @meeting.save
+        @project.activity_logs.create!(
+          user: current_user,
+          meeting: @meeting,
+          summary: "#{current_user.full_name} membuka ruang diskusi '#{@meeting.title}' (#{@meeting.room_code})"
+        )
+        @meeting.meeting_messages.create!(
+          user: current_user,
+          kind: "system",
+          body: "Ruang diskusi & video call dibuka oleh #{current_user.full_name}."
+        )
+        created = true
+      end
+    end
+
+    if existing_meeting
+      redirect_to project_meeting_path(@project, existing_meeting),
+        notice: "Ruang meeting #{existing_meeting.room_code} sudah terbuka. Anda bergabung ke room aktif."
+    elsif created
+      @project.broadcast_meeting_refresh!
       redirect_to project_meeting_path(@project, @meeting), notice: "Ruang meeting #{@meeting.room_code} siap digunakan!"
     else
       redirect_to @project, alert: @meeting.errors.full_messages.to_sentence
@@ -29,10 +44,28 @@ class MeetingsController < ApplicationController
   end
 
   def show
-    @messages = @meeting.meeting_messages.includes(:user).chronological
-    @team_members = @project.team.users.active.ordered_by_name
-    @project_tasks = @project.tasks.ordered_for_board
-    @new_message = @meeting.meeting_messages.build(kind: "chat")
+    @team_members = @project.team.active_members_with_avatars
+    users_by_id = @team_members.index_by(&:id)
+    @project_tasks = @project.tasks.ordered_for_board.to_a
+    tasks_by_id = @project_tasks.index_by(&:id)
+
+    preload_records_with_known_map([ @meeting ], :approved_by_id, :approved_by, users_by_id)
+    ActiveRecord::Associations::Preloader.new(records: [ @meeting ], associations: :meeting_action_items).call
+    action_items = @meeting.meeting_action_items.to_a
+    preload_records_with_known_map(action_items, :assignee_id, :assignee, users_by_id)
+    preload_records_with_known_map(action_items, :target_task_id, :target_task, tasks_by_id)
+
+    @messages = @meeting.meeting_messages.chronological.to_a
+    @messages.each { |message| message.association(:meeting).target = @meeting }
+    preload_records_with_known_map(
+      @messages,
+      :user_id,
+      :user,
+      users_by_id,
+      fallback_preload: { user: { avatar_attachment: :blob } }
+    )
+
+    @new_message = MeetingMessage.new(meeting: @meeting, kind: "chat")
   end
 
   def save_transcript
@@ -55,6 +88,7 @@ class MeetingsController < ApplicationController
     end
 
     Meetings::SummaryGenerator.new(meeting: @meeting, actor: current_user).call
+    @project.broadcast_meeting_refresh!
 
     respond_to do |format|
       format.turbo_stream { render_summary_panel_turbo_stream }
@@ -148,6 +182,7 @@ class MeetingsController < ApplicationController
       type: "call_ended",
       ended_by: current_user.full_name
     })
+    @project.broadcast_meeting_refresh!
 
     redirect_to project_meeting_path(@project, @meeting), notice: notice_msg
   end
@@ -178,6 +213,7 @@ class MeetingsController < ApplicationController
     end
 
     @meeting.broadcast_summary_refresh!
+    @project.broadcast_meeting_refresh!
     redirect_to project_meeting_path(@project, @meeting), alert: "Rangkuman rapat ditolak. Silakan revisi catatan lalu generate ulang."
   end
 

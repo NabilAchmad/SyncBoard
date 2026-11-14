@@ -1,12 +1,15 @@
 <% content_for :title, "#{@meeting.title} (#{@meeting.room_code}) | SyncBoard" %>
 <% content_for :page_title, "#{@project.key} · #{@meeting.title}" %>
 <% content_for :full_bleed, "true" %>
+<% content_for :head do %>
+  <meta name="turbo-cache-control" content="no-cache">
+<% end %>
 
 <%= turbo_stream_from @meeting, :room %>
 
 <% first_code = @project_tasks[0]&.code || "#{@project.key}-1" %>
 <% is_room_host = (@meeting.host_id == current_user.id) %>
-<% has_pending_acc = @meeting.meeting_action_items.where(selected: true, applied: false).exists? || @meeting.summary_ready? %>
+<% has_pending_acc = @meeting.pending_approval? %>
 
 <div class="flex flex-1 flex-col min-h-0"
      data-controller="meeting-room"
@@ -30,7 +33,7 @@
       <span data-meeting-room-target="participantCount" class="rounded-[6px] border border-primary-border bg-primary-soft px-2 py-0.5 font-mono text-[11px] font-semibold text-on-primary-soft">
         1 Online
       </span>
-      <span data-meeting-room-target="localStatus" class="hidden sm:inline-flex items-center rounded-[6px] border border-outline-variant bg-inset px-2 py-0.5 text-[11px] text-on-surface-muted">
+      <span data-meeting-room-target="localStatus" class="inline-flex max-w-full items-center rounded-[6px] border border-outline-variant bg-inset px-2 py-0.5 text-[11px] text-on-surface-muted">
         Menghubungkan...
       </span>
     </div>

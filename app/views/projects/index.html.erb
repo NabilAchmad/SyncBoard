@@ -105,7 +105,8 @@
               <% counts = project.task_counts_by_column %>
               <% total_tasks = counts.values.sum %>
               <% done_pct = total_tasks.positive? ? ((counts["done"].to_f / total_tasks) * 100).round : 0 %>
-              <% latest_meeting = project.meetings.sort_by(&:started_at).last %>
+              <% active_meeting = project.active_meeting %>
+              <% latest_meeting = active_meeting || project.meetings.max_by { |m| [ m.started_at, m.id ] } %>
 
               <article class="flex flex-col justify-between rounded-[12px] border border-outline-variant bg-card p-5 shadow-2xs transition hover:border-outline">
                 <div>
@@ -166,9 +167,14 @@
                     <%= user_avatar(project.owner, size_class: "w-6 h-6", text_class: "text-[10px]", lead: true, team: current_team) %>
                     <% if latest_meeting %>
                       <%= link_to project_meeting_path(project, latest_meeting),
-                        class: "inline-flex min-h-9 sm:min-h-7 items-center gap-1 rounded-[7px] border border-outline-variant bg-inset px-2 py-0.5 font-mono text-[11px] font-medium text-on-surface-variant hover:border-outline hover:bg-hover hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition" do %>
-                        <%= material_icon("videocam", size: 13, extra_class: "text-primary-text") %>
-                        <span><%= latest_meeting.room_code %></span>
+                        class: "inline-flex min-h-9 sm:min-h-7 items-center gap-1 rounded-[7px] border px-2 py-0.5 font-mono text-[11px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition #{latest_meeting.call_open? ? 'border-primary-border bg-primary-soft text-on-primary-soft hover:bg-primary-soft/80' : 'border-outline-variant bg-inset text-on-surface-variant hover:border-outline hover:bg-hover hover:text-on-surface'}" do %>
+                        <% if latest_meeting.call_open? %>
+                          <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-danger animate-pulse" aria-hidden="true"></span>
+                          <span>Gabung Room · <%= latest_meeting.room_code %></span>
+                        <% else %>
+                          <%= material_icon("videocam", size: 13, extra_class: "text-primary-text") %>
+                          <span><%= latest_meeting.room_code %></span>
+                        <% end %>
                       <% end %>
                     <% end %>
                   </div>

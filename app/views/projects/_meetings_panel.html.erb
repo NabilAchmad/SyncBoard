@@ -1,0 +1,43 @@
+<div id="<%= dom_id(project, :meetings_panel) %>" class="rounded-[12px] border border-outline-variant bg-panel p-5 lg:col-span-7">
+  <div class="flex items-center justify-between gap-2 pb-3 border-b border-outline-variant">
+    <h3 class="font-display text-sm font-semibold text-on-surface">Ruang Diskusi</h3>
+    <span class="font-mono text-[11px] text-on-surface-muted"><%= meetings.size %> Room</span>
+  </div>
+
+  <% if meetings.any? %>
+    <div class="divide-y divide-outline-variant">
+      <% meetings.each do |meeting| %>
+        <div class="flex flex-col gap-2.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="min-w-0 space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="rounded border border-outline-variant bg-inset px-1.5 py-0.5 font-mono text-[10px] font-semibold text-on-surface"><%= meeting.room_code %></span>
+              <%= meeting_status_badge(meeting) %>
+              <span class="font-mono text-[10px] text-on-surface-muted"><%= meeting.started_at.strftime("%d %b %H:%M") %></span>
+            </div>
+            <p class="truncate text-sm font-semibold text-on-surface"><%= meeting.title %></p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <% if meeting.call_open? && meeting.host_id == current_user.id %>
+              <%= button_to "Akhiri", end_call_project_meeting_path(project, meeting),
+                method: :post,
+                class: ui_btn_danger_class("min-h-11 sm:min-h-8 px-3 py-1 text-xs rounded-[8px]") %>
+            <% end %>
+
+            <% if meeting.call_open? %>
+              <%= link_to "Gabung Room",
+                project_meeting_path(project, meeting),
+                class: ui_btn_primary_class("min-h-11 sm:min-h-8 px-3 py-1 text-xs rounded-[8px]") %>
+            <% else %>
+              <%= link_to(meeting.approved? || meeting.ended? ? "Lihat Hasil" : "Masuk Room",
+                project_meeting_path(project, meeting),
+                class: ui_btn_secondary_class("min-h-11 sm:min-h-8 px-3 py-1 text-xs rounded-[8px]")) %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="pt-4 text-xs text-on-surface-muted">Belum ada room. Buat room dari bar di atas.</p>
+  <% end %>
+</div>

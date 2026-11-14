@@ -16,6 +16,7 @@ class Meeting < ApplicationRecord
   has_many :activity_logs, dependent: :nullify
 
   scope :recent_first, -> { order(started_at: :desc, id: :desc) }
+  scope :open_rooms, -> { where(ended_at: nil, status: %w[live summary_ready]) }
 
   before_validation :assign_defaults, on: :create
 
@@ -32,6 +33,10 @@ class Meeting < ApplicationRecord
     status == "live"
   end
 
+  def call_open?
+    ended_at.nil? && %w[live summary_ready].include?(status)
+  end
+
   def ended?
     status == "ended"
   end
@@ -46,6 +51,16 @@ class Meeting < ApplicationRecord
 
   def rejected?
     status == "rejected"
+  end
+
+  def pending_approval?
+    pending_items = if meeting_action_items.loaded?
+      meeting_action_items.any? { |item| item.selected? && !item.applied? }
+    else
+      meeting_action_items.where(selected: true, applied: false).exists?
+    end
+
+    pending_items || summary_ready?
   end
 
   def broadcast_summary_refresh!

@@ -45,9 +45,22 @@ class Team < ApplicationRecord
 
     if team_memberships.loaded?
       team_memberships.any? { |membership| membership.user_id == user.id && membership.lead? }
+    elsif user.team_memberships.loaded?
+      user.lead_of?(self)
     else
       team_memberships.exists?(user_id: user.id, role: "lead")
     end
+  end
+
+  def active_members_with_avatars
+    ActiveRecord::Associations::Preloader.new(
+      records: [ self ],
+      associations: { team_memberships: { user: { avatar_attachment: :blob } } }
+    ).call
+
+    team_memberships
+      .filter_map { |membership| membership.user if membership.user&.active? }
+      .sort_by { |user| [ user.full_name.to_s, user.id ] }
   end
 
   private

@@ -2,7 +2,7 @@ class TeamsController < ApplicationController
   before_action :set_team, only: %i[update switch regenerate_code leave]
 
   def index
-    @memberships = current_user.team_memberships.includes(team: %i[owner team_memberships projects]).order(joined_at: :asc, id: :asc)
+    @memberships = load_memberships_with_stats
     @new_team = Team.new
   end
 
@@ -22,7 +22,7 @@ class TeamsController < ApplicationController
     set_current_team(@team)
     redirect_to root_path, notice: "Tim '#{@team.name}' berhasil dibuat! Kode Undangan Anda: #{@team.invite_code}"
   rescue ActiveRecord::RecordInvalid
-    @memberships = current_user.team_memberships.includes(team: %i[owner team_memberships projects]).order(joined_at: :asc, id: :asc)
+    @memberships = load_memberships_with_stats
     @new_team = @team
     flash.now[:alert] = @team.errors.full_messages.to_sentence
     render :index, status: :unprocessable_entity
@@ -105,10 +105,23 @@ class TeamsController < ApplicationController
 
   private
     def set_team
-      @team = current_user.teams.find_by(id: params[:id])
+      team_id = params[:id].to_i
+      @team = available_teams.find { |team| team.id == team_id }
       return if @team
 
       redirect_to root_path, alert: "Tim tidak ditemukan atau Anda bukan anggota tim tersebut."
+    end
+
+    def load_memberships_with_stats
+      memberships = if current_user.team_memberships.loaded?
+        current_user.team_memberships.sort_by { |membership| [ membership.joined_at || Time.at(0), membership.id || 0 ] }
+      else
+        current_user.team_memberships.includes(:team).order(joined_at: :asc, id: :asc).to_a
+      end
+
+      teams = memberships.filter_map(&:team)
+      ActiveRecord::Associations::Preloader.new(records: teams, associations: %i[team_memberships projects]).call if teams.any?
+      memberships
     end
 
     def team_params

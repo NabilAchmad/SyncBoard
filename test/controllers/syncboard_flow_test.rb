@@ -330,4 +330,62 @@ class SyncboardFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match(/Selesai/, response.body)
   end
+
+  test "tombol buka room berubah menjadi gabung room saat room terbuka dan tidak membuat room duplikat" do
+    team = teams(:alpha)
+    project = team.projects.create!(name: "Single Room Flow", key: "SRF", owner: @lead)
+
+    sign_in_as(@member)
+    get project_path(project)
+    assert_response :success
+    assert_select "#meeting_action_project_#{project.id} button", text: /Buka Room/
+    assert_select "#meeting_action_project_#{project.id} a", text: /Gabung Room/, count: 0
+
+    assert_difference("Meeting.count", 1) do
+      post project_meetings_path(project), params: { meeting: { title: "Room Pertama" } }
+    end
+    first_meeting = project.meetings.order(:id).last
+    assert first_meeting.call_open?
+    assert_redirected_to project_meeting_path(project, first_meeting)
+
+    get project_meeting_path(project, first_meeting)
+    assert_response :success
+    assert_select "meta[name='turbo-cache-control'][content='no-cache']"
+    assert_select "[data-meeting-room-target='localStatus']"
+
+    # Pengguna lain melihat tombol "Gabung Room" pada proyek dan workspace
+    delete session_path
+    sign_in_as(@lead)
+    get project_path(project)
+    assert_response :success
+    assert_select "#meeting_action_project_#{project.id} a[href='#{project_meeting_path(project, first_meeting)}']", text: /Gabung Room/
+    assert_select "#meeting_action_project_#{project.id} button", text: /Buka Room/, count: 0
+    assert_select "#meetings_panel_project_#{project.id} a[href='#{project_meeting_path(project, first_meeting)}']", text: /Gabung Room/
+
+    get root_path
+    assert_response :success
+    assert_select "a[href='#{project_meeting_path(project, first_meeting)}']", text: /Gabung Room · #{first_meeting.room_code}/
+
+    # POST manual ke meetings#create saat room masih terbuka wajib masuk ke room aktif (tanpa duplikasi)
+    assert_no_difference("Meeting.count") do
+      post project_meetings_path(project), params: { meeting: { title: "Room Duplikat" } }
+    end
+    assert_redirected_to project_meeting_path(project, first_meeting)
+
+    # Host mengakhiri panggilan -> tombol kembali ke "Buka Room" dan room baru bisa dibuka lagi
+    delete session_path
+    sign_in_as(@member)
+    post end_call_project_meeting_path(project, first_meeting)
+    assert_redirected_to project_meeting_path(project, first_meeting)
+    assert_not first_meeting.reload.call_open?
+
+    get project_path(project)
+    assert_response :success
+    assert_select "#meeting_action_project_#{project.id} button", text: /Buka Room/
+    assert_select "#meeting_action_project_#{project.id} a", text: /Gabung Room/, count: 0
+
+    assert_difference("Meeting.count", 1) do
+      post project_meetings_path(project), params: { meeting: { title: "Room Kedua Setelah Tutup" } }
+    end
+  end
 end

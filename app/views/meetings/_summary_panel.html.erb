@@ -127,7 +127,7 @@
     </details>
   <% end %>
 
-  <% if meeting.meeting_action_items.where(selected: true, applied: false).exists? || meeting.summary_ready? %>
+  <% if meeting.pending_approval? %>
     <div class="sticky bottom-0 border-t border-outline-variant bg-panel pt-3 pb-1">
       <div class="lead-only space-y-2">
         <%= button_to "ACC & Terapkan ke Kanban", approve_project_meeting_path(project, meeting),

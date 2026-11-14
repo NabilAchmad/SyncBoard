@@ -47,18 +47,30 @@ export default class extends Controller {
   connect() {
     this.clientId = this.generateClientId()
     this.peers = new Map()
+    this.peerMediaStates = new Map()
     this.pendingCandidates = new Map()
+    this.acquiringDevices = new Set()
     this.localStream = null
     this.screenStream = null
     this.audioEnabled = true
     this.videoEnabled = true
     this.screenSharing = false
     this.callActive = false
+    this.leaveSent = false
+    this.pendingAudioUnlock = false
+    this.lastAudioError = null
+    this.lastVideoError = null
     const savedMirror = window.localStorage?.getItem("syncboard_mirror_cam")
     this.mirrorEnabled = savedMirror === null ? true : savedMirror === "true"
     this.recognizing = false
     this.recognition = null
     this.saveTimer = null
+
+    this.handlePageLeave = () => this.sendLeaveSignal()
+    this.handleUserGesture = () => this.retryRemoteAudioPlayback()
+    window.addEventListener("pagehide", this.handlePageLeave)
+    window.addEventListener("beforeunload", this.handlePageLeave)
+    document.addEventListener("pointerdown", this.handleUserGesture)
 
     this.consumer = createConsumer()
     this.setupMediaAndJoin()
@@ -66,8 +78,13 @@ export default class extends Controller {
 
   disconnect() {
     if (this.saveTimer) clearTimeout(this.saveTimer)
+    window.removeEventListener("pagehide", this.handlePageLeave)
+    window.removeEventListener("beforeunload", this.handlePageLeave)
+    document.removeEventListener("pointerdown", this.handleUserGesture)
     this.stopSpeechRecognition({ preserveCaption: true })
+    this.sendLeaveSignal()
     this.closeAllPeers()
+    this.peerMediaStates.clear()
     this.stopAllMediaStreams()
     if (this.subscription) {
       this.subscription.unsubscribe()
@@ -75,6 +92,22 @@ export default class extends Controller {
     if (this.consumer) {
       this.consumer.disconnect()
     }
+  }
+
+  sendLeaveSignal() {
+    if (!this.callActive || this.leaveSent || !this.subscription) return
+    this.leaveSent = true
+    this.subscription.perform("leave", { client_id: this.clientId })
+  }
+
+  retryRemoteAudioPlayback() {
+    if (!this.pendingAudioUnlock || !this.hasPeersGridTarget) return
+    this.pendingAudioUnlock = false
+    this.peersGridTarget.querySelectorAll("audio").forEach((audioEl) => {
+      if (audioEl.srcObject && audioEl.paused) {
+        audioEl.play().catch(() => { this.pendingAudioUnlock = true })
+      }
+    })
   }
 
   stopAllMediaStreams() {
@@ -116,8 +149,140 @@ export default class extends Controller {
     this.updateParticipantCount()
   }
 
-  async acquireLocalMedia() {
+  liveTracks(kind) {
+    if (!this.localStream) return []
+    const getter = kind === "video" ? "getVideoTracks" : "getAudioTracks"
+    return this.localStream[getter]().filter((track) => track.readyState === "live")
+  }
+
+  watchStreamTracks(stream) {
+    stream.getAudioTracks().forEach((track) => {
+      track.onended = () => this.handleLocalTrackEnded("audio")
+    })
+    stream.getVideoTracks().forEach((track) => {
+      track.onended = () => this.handleLocalTrackEnded("video")
+    })
+  }
+
+  handleLocalTrackEnded(kind) {
+    if (!this.callActive) return
+    if (kind === "video") {
+      this.videoEnabled = this.liveTracks("video").length > 0
+      if (!this.screenSharing) {
+        this.showLocalPlaceholder(!this.videoEnabled)
+      }
+    } else {
+      this.audioEnabled = this.liveTracks("audio").length > 0
+    }
+    this.refreshLocalStatusSummary()
+    this.broadcastMediaState()
+    this.updateMediaButtons()
+  }
+
+  async tryAcquireStream(constraints) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      return { stream, error: null }
+    } catch (error) {
+      return { stream: null, error }
+    }
+  }
+
+  shortErrorHint(error) {
+    switch (error?.name) {
+      case "NotAllowedError":
+      case "PermissionDeniedError":
+        return "izin ditolak browser"
+      case "NotFoundError":
+      case "DevicesNotFoundError":
+        return "perangkat tidak ditemukan"
+      case "NotReadableError":
+      case "TrackStartError":
+        return "sedang dipakai app lain"
+      default:
+        return "klik ikon untuk coba lagi"
+    }
+  }
+
+  describeDeviceFailure(deviceLabel, error) {
+    if (!window.isSecureContext) {
+      return `${deviceLabel} membutuhkan HTTPS atau http://localhost.`
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
+      return `Browser ini tidak mendukung akses ${deviceLabel.toLowerCase()}.`
+    }
+
+    switch (error?.name) {
+      case "NotAllowedError":
+      case "PermissionDeniedError":
+        return `Izin ${deviceLabel.toLowerCase()} ditolak browser. Klik ikon gembok/kamera di address bar lalu izinkan akses.`
+      case "NotFoundError":
+      case "DevicesNotFoundError":
+        return `${deviceLabel} tidak terdeteksi di perangkat ini.`
+      case "NotReadableError":
+      case "TrackStartError":
+        return `${deviceLabel} sedang dipakai aplikasi atau tab lain.`
+      case "OverconstrainedError":
+        return `Resolusi ${deviceLabel.toLowerCase()} tidak didukung perangkat ini.`
+      default:
+        return `Gagal mengakses ${deviceLabel.toLowerCase()} (${error?.name || "error"}).`
+    }
+  }
+
+  refreshLocalStatusSummary() {
+    if (!this.callActive) return
+
+    const hasMic = this.liveTracks("audio").length > 0
+    const hasCam = this.liveTracks("video").length > 0
+
+    if (hasMic && hasCam) {
+      if (this.audioEnabled && this.videoEnabled) {
+        this.setLocalStatus("Kamera & Mikrofon aktif", "emerald")
+      } else if (this.videoEnabled) {
+        this.setLocalStatus("Kamera aktif · Mic mute", "emerald")
+      } else if (this.audioEnabled) {
+        this.setLocalStatus("Mikrofon aktif · Cam off", "emerald")
+      } else {
+        this.setLocalStatus("Mic mute & Cam off", "slate")
+      }
+      return
+    }
+
+    if (hasCam && !hasMic) {
+      const hint = this.lastAudioError ? ` (${this.shortErrorHint(this.lastAudioError)})` : ""
+      this.setLocalStatus(`Kamera aktif · Mic tidak aktif${hint}`, "amber")
+      return
+    }
+
+    if (hasMic && !hasCam) {
+      const hint = this.lastVideoError ? ` (${this.shortErrorHint(this.lastVideoError)})` : ""
+      this.setLocalStatus(`Hanya Audio · Klik Cam untuk aktifkan${hint}`, "amber")
+      return
+    }
+
+    const primaryErr = this.lastVideoError || this.lastAudioError
+    if (primaryErr) {
+      this.setLocalStatus(`Mode Observer (${this.shortErrorHint(primaryErr)}) — klik Mic/Cam untuk coba lagi`, "amber")
+    } else {
+      this.setLocalStatus("Mode Observer (klik Mic/Cam atau pakai Share Screen)", "slate")
+    }
+  }
+
+  async acquireLocalMedia() {
+    this.lastAudioError = null
+    this.lastVideoError = null
+
+    if (!window.isSecureContext) {
+      this.localStream = null
+      this.audioEnabled = false
+      this.videoEnabled = false
+      this.setLocalStatus("Kamera & mic butuh HTTPS (atau http://localhost). Anda tetap bisa chat & ikut rapat.", "amber")
+      this.showLocalPlaceholder(true)
+      return
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.localStream = null
       this.audioEnabled = false
       this.videoEnabled = false
       this.setLocalStatus("Browser tidak mendukung WebRTC media; mode observer aktif.", "amber")
@@ -125,28 +290,43 @@ export default class extends Controller {
       return
     }
 
-    try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      this.audioEnabled = true
-      this.videoEnabled = true
-      this.attachLocalVideo(this.localStream)
-      this.setLocalStatus("Kamera & Mikrofon aktif", "emerald")
-      this.showLocalPlaceholder(false)
-    } catch (_camAndMicErr) {
-      try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        this.audioEnabled = true
-        this.videoEnabled = false
-        this.setLocalStatus("Hanya Audio (kamera sedang dipakai tab lain / tidak tersedia)", "amber")
-        this.showLocalPlaceholder(true)
-      } catch (_audioOnlyErr) {
-        this.localStream = null
-        this.audioEnabled = false
-        this.videoEnabled = false
-        this.setLocalStatus("Mode Observer (izinkan mic/kamera atau pakai Share Screen)", "slate")
-        this.showLocalPlaceholder(true)
+    const combined = await this.tryAcquireStream({ video: true, audio: true })
+    if (combined.stream) {
+      this.localStream = combined.stream
+    } else {
+      const tracks = []
+      const audioRes = await this.tryAcquireStream({ audio: true })
+      if (audioRes.stream) {
+        tracks.push(...audioRes.stream.getAudioTracks())
+      } else {
+        this.lastAudioError = audioRes.error || combined.error
       }
+
+      const videoRes = await this.tryAcquireStream({ video: true })
+      if (videoRes.stream) {
+        tracks.push(...videoRes.stream.getVideoTracks())
+      } else {
+        this.lastVideoError = videoRes.error || combined.error
+      }
+
+      this.localStream = tracks.length > 0 ? new MediaStream(tracks) : null
     }
+
+    if (this.localStream) {
+      this.watchStreamTracks(this.localStream)
+    }
+
+    this.audioEnabled = this.liveTracks("audio").length > 0
+    this.videoEnabled = this.liveTracks("video").length > 0
+
+    if (this.videoEnabled) {
+      this.attachLocalVideo(this.localStream)
+      this.showLocalPlaceholder(false)
+    } else {
+      this.showLocalPlaceholder(true)
+    }
+
+    this.refreshLocalStatusSummary()
   }
 
   attachLocalVideo(stream) {
@@ -180,7 +360,7 @@ export default class extends Controller {
       amber: "border-warning-border bg-warning-soft text-on-warning-soft",
       slate: "border-outline-variant bg-inset text-on-surface-variant"
     }
-    this.localStatusTarget.className = `inline-flex items-center rounded-md border px-2.5 py-0.5 text-[11px] font-medium ${tones[tone] || tones.slate}`
+    this.localStatusTarget.className = `inline-flex max-w-full items-center rounded-[6px] border px-2 py-0.5 text-[11px] font-medium ${tones[tone] || tones.slate}`
   }
 
   subscribeToRoom() {
@@ -189,6 +369,7 @@ export default class extends Controller {
       {
         connected: () => {
           if (!this.callActive) return
+          this.leaveSent = false
           this.subscription.perform("join", {
             client_id: this.clientId,
             audio_enabled: this.audioEnabled,
@@ -228,6 +409,21 @@ export default class extends Controller {
     }
   }
 
+  updatePeerMediaState(peerId, data) {
+    if (!data) return this.peerMediaStates.get(peerId) || {}
+    const prev = this.peerMediaStates.get(peerId) || {
+      audio_enabled: true,
+      video_enabled: false,
+      screen_sharing: false
+    }
+    const next = { ...prev }
+    if (typeof data.audio_enabled === "boolean") next.audio_enabled = data.audio_enabled
+    if (typeof data.video_enabled === "boolean") next.video_enabled = data.video_enabled
+    if (typeof data.screen_sharing === "boolean") next.screen_sharing = data.screen_sharing
+    this.peerMediaStates.set(peerId, next)
+    return next
+  }
+
   onPeerJoined(data) {
     const peerId = data.sender_id
     if (data.target_id && data.target_id !== this.clientId) return
@@ -238,9 +434,17 @@ export default class extends Controller {
       stale.pc.close()
       this.peers.delete(peerId)
       this.pendingCandidates.delete(peerId)
+      const staleTile = this.peersGridTarget?.querySelector(`[data-peer-id="${peerId}"]`)
+      if (staleTile) {
+        const videoEl = staleTile.querySelector("video")
+        const audioEl = staleTile.querySelector("audio")
+        if (videoEl) videoEl.srcObject = null
+        if (audioEl) audioEl.srcObject = null
+      }
     }
 
-    this.ensurePeerTile(peerId, data.user, data)
+    const mediaState = this.updatePeerMediaState(peerId, data)
+    this.ensurePeerTile(peerId, data.user, mediaState)
 
     // Reply once when someone new joins so both sides discover each other
     if (!data.target_id) {
@@ -265,15 +469,21 @@ export default class extends Controller {
       : DEFAULT_ICE_SERVERS
   }
 
-  ensurePeerConnection(peerId, userMeta) {
+  ensurePeerEntry(peerId, userMeta) {
     const existing = this.peers.get(peerId)
     if (existing) {
       if (userMeta) existing.user = userMeta
-      return existing.pc
+      return existing
     }
 
     const pc = new RTCPeerConnection({ iceServers: this.getIceServers() })
-    const peerState = { pc, user: userMeta, tile: null, remoteStream: new MediaStream() }
+    const peerState = {
+      pc,
+      user: userMeta,
+      remoteStream: new MediaStream(),
+      signalChain: Promise.resolve(),
+      iceRestarted: false
+    }
     this.peers.set(peerId, peerState)
 
     const activeStream = this.screenStream || this.localStream
@@ -283,7 +493,7 @@ export default class extends Controller {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        this.subscription.perform("signal", {
+        this.subscription?.perform("signal", {
           client_id: this.clientId,
           target_id: peerId,
           signal_type: "ice_candidate",
@@ -293,7 +503,8 @@ export default class extends Controller {
     }
 
     pc.ontrack = (event) => {
-      const tile = this.ensurePeerTile(peerId, peerState.user)
+      const mediaState = this.peerMediaStates.get(peerId) || {}
+      const tile = this.ensurePeerTile(peerId, peerState.user, mediaState)
       const videoEl = tile.querySelector("video")
       const audioEl = tile.querySelector("audio")
       const stream = event.streams[0]
@@ -301,56 +512,124 @@ export default class extends Controller {
       if (stream) {
         peerState.remoteStream = stream
       } else {
+        peerState.remoteStream
+          .getTracks()
+          .filter((t) => t.kind === event.track.kind && t.readyState === "ended")
+          .forEach((t) => peerState.remoteStream.removeTrack(t))
         peerState.remoteStream.addTrack(event.track)
       }
 
       if (event.track.kind === "video" && videoEl) {
-        videoEl.srcObject = peerState.remoteStream
-        videoEl.classList.remove("hidden")
-        tile.querySelector("[data-peer-placeholder]")?.classList.add("hidden")
+        videoEl.muted = true
+        if (videoEl.srcObject !== peerState.remoteStream) {
+          videoEl.srcObject = peerState.remoteStream
+        }
+        this.bindRemoteVideoEvents(tile, peerId, videoEl, event.track)
         videoEl.play().catch(() => {})
+        this.syncPeerVideoVisibility(tile, peerId)
       }
 
       if (event.track.kind === "audio" && audioEl) {
-        audioEl.srcObject = peerState.remoteStream
-        audioEl.play().catch(() => {})
+        audioEl.srcObject = new MediaStream([ event.track ])
+        audioEl.play().catch(() => { this.pendingAudioUnlock = true })
       }
     }
 
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
-        this.removePeer(peerId)
+    const handleConnectionUpdate = () => {
+      const tile = this.peersGridTarget?.querySelector(`[data-peer-id="${peerId}"]`)
+      if (tile) this.syncPeerVideoVisibility(tile, peerId)
+
+      const iceState = pc.iceConnectionState
+      const connState = pc.connectionState
+      if (iceState === "connected" || iceState === "completed" || connState === "connected") {
+        peerState.iceRestarted = false
+      } else if ((iceState === "failed" || connState === "failed") && !peerState.iceRestarted) {
+        peerState.iceRestarted = true
+        if (this.clientId < peerId) {
+          this.createOfferForPeer(peerId, peerState.user, { iceRestart: true })
+        }
       }
     }
 
-    return pc
+    pc.oniceconnectionstatechange = handleConnectionUpdate
+    pc.onconnectionstatechange = handleConnectionUpdate
+
+    return peerState
   }
 
-  async createOfferForPeer(peerId, userMeta) {
-    const pc = this.ensurePeerConnection(peerId, userMeta)
-    try {
-      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-      await pc.setLocalDescription(offer)
-      this.subscription.perform("signal", {
-        client_id: this.clientId,
-        target_id: peerId,
-        signal_type: "offer",
-        payload: pc.localDescription.toJSON(),
-        audio_enabled: this.audioEnabled,
-        video_enabled: this.videoEnabled,
-        screen_sharing: this.screenSharing
+  ensurePeerConnection(peerId, userMeta) {
+    return this.ensurePeerEntry(peerId, userMeta).pc
+  }
+
+  bindRemoteVideoEvents(tile, peerId, videoEl, track) {
+    if (!videoEl.dataset.boundSync) {
+      videoEl.dataset.boundSync = "true"
+      const sync = () => this.syncPeerVideoVisibility(tile, peerId)
+      videoEl.addEventListener("loadedmetadata", sync)
+      videoEl.addEventListener("loadeddata", sync)
+      videoEl.addEventListener("playing", sync)
+      videoEl.addEventListener("resize", sync)
+    }
+
+    if (!track.datasetBoundSync) {
+      track.datasetBoundSync = true
+      const sync = () => this.syncPeerVideoVisibility(tile, peerId)
+      track.addEventListener("unmute", sync)
+      track.addEventListener("mute", sync)
+      track.addEventListener("ended", sync)
+    }
+  }
+
+  async createOfferForPeer(peerId, userMeta, options = {}) {
+    const peerState = this.ensurePeerEntry(peerId, userMeta)
+    peerState.signalChain = peerState.signalChain
+      .catch(() => {})
+      .then(async () => {
+        const { pc } = peerState
+        if (pc.signalingState === "closed") return
+        try {
+          const offer = await pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+            iceRestart: Boolean(options.iceRestart)
+          })
+          await pc.setLocalDescription(offer)
+          this.subscription?.perform("signal", {
+            client_id: this.clientId,
+            target_id: peerId,
+            signal_type: "offer",
+            payload: pc.localDescription.toJSON(),
+            audio_enabled: this.audioEnabled,
+            video_enabled: this.videoEnabled,
+            screen_sharing: this.screenSharing
+          })
+        } catch (error) {
+          console.error("WebRTC offer error:", error)
+        }
       })
-    } catch (error) {
-      console.error("WebRTC offer error:", error)
-    }
+    return peerState.signalChain
   }
 
-  async onSignalReceived(data) {
+  onSignalReceived(data) {
     if (data.target_id !== this.clientId) return
 
     const peerId = data.sender_id
-    const pc = this.ensurePeerConnection(peerId, data.user)
-    this.ensurePeerTile(peerId, data.user, data)
+    const peerState = this.ensurePeerEntry(peerId, data.user)
+    if (data.signal_type === "offer" || data.signal_type === "answer") {
+      const mediaState = this.updatePeerMediaState(peerId, data)
+      this.ensurePeerTile(peerId, data.user, mediaState)
+    } else {
+      this.ensurePeerTile(peerId, data.user, this.peerMediaStates.get(peerId) || {})
+    }
+
+    peerState.signalChain = peerState.signalChain
+      .catch(() => {})
+      .then(() => this.processSignal(data, peerId, peerState))
+  }
+
+  async processSignal(data, peerId, peerState) {
+    const { pc } = peerState
+    if (pc.signalingState === "closed") return
 
     try {
       if (data.signal_type === "offer") {
@@ -363,7 +642,7 @@ export default class extends Controller {
         await this.flushCandidates(peerId, pc)
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
-        this.subscription.perform("signal", {
+        this.subscription?.perform("signal", {
           client_id: this.clientId,
           target_id: peerId,
           signal_type: "answer",
@@ -373,11 +652,12 @@ export default class extends Controller {
           screen_sharing: this.screenSharing
         })
       } else if (data.signal_type === "answer") {
+        if (pc.signalingState !== "have-local-offer") return
         await pc.setRemoteDescription(new RTCSessionDescription(data.payload))
         await this.flushCandidates(peerId, pc)
       } else if (data.signal_type === "ice_candidate" && data.payload) {
         if (pc.remoteDescription) {
-          await pc.addIceCandidate(new RTCIceCandidate(data.payload))
+          await pc.addIceCandidate(new RTCIceCandidate(data.payload)).catch(() => {})
         } else {
           const queue = this.pendingCandidates.get(peerId) || []
           queue.push(data.payload)
@@ -391,16 +671,21 @@ export default class extends Controller {
 
   async flushCandidates(peerId, pc) {
     const queue = this.pendingCandidates.get(peerId) || []
-    for (const candidate of queue) {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate))
-    }
     this.pendingCandidates.delete(peerId)
+    for (const candidate of queue) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+      } catch (_candidateErr) {
+        // Ignore stale candidates from superseded ICE generations
+      }
+    }
   }
 
   onMediaStateUpdated(data) {
+    const mediaState = this.updatePeerMediaState(data.sender_id, data)
     const tile = this.peersGridTarget?.querySelector(`[data-peer-id="${data.sender_id}"]`)
     if (!tile) return
-    this.applyTileMediaBadges(tile, data)
+    this.applyTileMediaBadges(tile, mediaState)
   }
 
   ensurePeerTile(peerId, userMeta, state = {}) {
@@ -418,12 +703,13 @@ export default class extends Controller {
     tile.dataset.peerId = peerId
     tile.className = "relative aspect-video lg:aspect-auto lg:min-h-[220px] overflow-hidden rounded-[12px] border border-outline-variant bg-column shadow-2xs"
     tile.innerHTML = `
-      <video autoplay playsinline class="hidden h-full w-full object-cover"></video>
-      <audio autoplay class="hidden"></audio>
+      <video muted autoplay playsinline class="hidden h-full w-full object-cover"></video>
+      <audio autoplay playsinline class="hidden"></audio>
       <div data-peer-placeholder class="flex h-full w-full flex-col items-center justify-center bg-inset p-4 pb-10 text-center">
         <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-outline bg-card font-display text-base font-semibold text-on-surface">${this.escapeHtml(initials)}</div>
         <p class="mt-2 text-xs font-semibold text-on-surface">${this.escapeHtml(name)}</p>
         <p class="text-[11px] text-on-surface-muted">${this.escapeHtml(roleLabel)}</p>
+        <p data-peer-connection-status class="mt-1.5 text-[10px] font-medium text-on-surface-muted empty:hidden"></p>
       </div>
       <div class="absolute left-2.5 bottom-2.5 inline-flex max-w-[calc(100%-1.25rem)] items-center gap-1.5 rounded-full bg-inverse-surface/85 px-2.5 py-1 text-[11px] font-medium text-inverse-on-surface backdrop-blur-xs">
         <span class="truncate">${this.escapeHtml(name)}</span>
@@ -437,28 +723,62 @@ export default class extends Controller {
     return tile
   }
 
-  applyTileMediaBadges(tile, state) {
+  applyTileMediaBadges(tile, state = {}) {
+    const peerId = tile.dataset.peerId
+    const effective = { ...(this.peerMediaStates.get(peerId) || {}), ...state }
     const badgeEl = tile.querySelector("[data-peer-badges]")
+    if (badgeEl) {
+      const badges = []
+      badges.push(effective.audio_enabled === false ? "Mute" : "Mic On")
+      if (effective.screen_sharing) {
+        badges.push("Share Screen")
+      } else {
+        badges.push(effective.video_enabled ? "Cam On" : "Cam Off")
+      }
+      badgeEl.textContent = badges.join(" · ")
+    }
+
+    this.syncPeerVideoVisibility(tile, peerId)
+  }
+
+  syncPeerVideoVisibility(tile, peerId) {
     const videoEl = tile.querySelector("video")
     const placeholderEl = tile.querySelector("[data-peer-placeholder]")
-    if (!badgeEl) return
+    const statusEl = tile.querySelector("[data-peer-connection-status]")
+    const state = this.peerMediaStates.get(peerId) || {}
+    const peerState = this.peers.get(peerId)
+    const pc = peerState?.pc
 
-    const badges = []
-    badges.push(state.audio_enabled === false ? "Mute" : "Mic On")
-    if (state.screen_sharing) {
-      badges.push("Share Screen")
-    } else {
-      badges.push(state.video_enabled ? "Cam On" : "Cam Off")
-    }
-    badgeEl.textContent = badges.join(" · ")
+    const wantsVideo = Boolean(state.video_enabled || state.screen_sharing)
+    const videoTrack = videoEl?.srcObject?.getVideoTracks()?.find((t) => t.readyState === "live")
+    const hasRenderableFrames = Boolean(
+      videoTrack && !videoTrack.muted && (videoEl.videoWidth > 0 || videoEl.readyState >= 2)
+    )
 
-    const hasLiveVideoTrack = videoEl?.srcObject?.getVideoTracks()?.length > 0
-    if (state.video_enabled === false && !state.screen_sharing) {
-      videoEl?.classList.add("hidden")
-      placeholderEl?.classList.remove("hidden")
-    } else if (hasLiveVideoTrack && (state.video_enabled || state.screen_sharing)) {
+    if (wantsVideo && hasRenderableFrames) {
       videoEl?.classList.remove("hidden")
       placeholderEl?.classList.add("hidden")
+      if (statusEl) statusEl.textContent = ""
+      if (videoEl?.paused) videoEl.play().catch(() => {})
+      return
+    }
+
+    videoEl?.classList.add("hidden")
+    placeholderEl?.classList.remove("hidden")
+
+    if (!statusEl) return
+    if (wantsVideo) {
+      const iceState = pc?.iceConnectionState
+      const connState = pc?.connectionState
+      if (iceState === "failed" || connState === "failed") {
+        statusEl.textContent = "Video P2P gagal (jaringan butuh TURN server)"
+      } else if (iceState === "disconnected" || connState === "disconnected") {
+        statusEl.textContent = "Menyambung ulang video..."
+      } else {
+        statusEl.textContent = "Menghubungkan video..."
+      }
+    } else {
+      statusEl.textContent = ""
     }
   }
 
@@ -468,6 +788,7 @@ export default class extends Controller {
       peerState.pc.close()
       this.peers.delete(peerId)
     }
+    this.peerMediaStates.delete(peerId)
     this.pendingCandidates.delete(peerId)
     this.peersGridTarget?.querySelector(`[data-peer-id="${peerId}"]`)?.remove()
     this.updateParticipantCount()
@@ -489,21 +810,110 @@ export default class extends Controller {
     }
   }
 
-  toggleMic() {
-    if (!this.localStream || this.localStream.getAudioTracks().length === 0) return
-    this.audioEnabled = !this.audioEnabled
-    this.localStream.getAudioTracks().forEach((track) => { track.enabled = this.audioEnabled })
+  async toggleMic() {
+    await this.toggleDeviceTrack("audio")
+  }
+
+  async toggleCam() {
+    await this.toggleDeviceTrack("video")
+  }
+
+  async toggleDeviceTrack(kind) {
+    if (!this.callActive) return
+
+    const tracks = this.liveTracks(kind)
+    if (tracks.length === 0) {
+      await this.enableDeviceTrack(kind)
+      return
+    }
+
+    const enabled = kind === "video" ? !this.videoEnabled : !this.audioEnabled
+    if (kind === "video") {
+      this.videoEnabled = enabled
+      if (!this.screenSharing) {
+        this.showLocalPlaceholder(!this.videoEnabled)
+      }
+    } else {
+      this.audioEnabled = enabled
+    }
+
+    tracks.forEach((track) => { track.enabled = enabled })
+    this.refreshLocalStatusSummary()
     this.broadcastMediaState()
     this.updateMediaButtons()
   }
 
-  toggleCam() {
-    if (!this.localStream || this.localStream.getVideoTracks().length === 0) return
-    this.videoEnabled = !this.videoEnabled
-    this.localStream.getVideoTracks().forEach((track) => { track.enabled = this.videoEnabled })
-    this.showLocalPlaceholder(!this.videoEnabled && !this.screenSharing)
-    this.broadcastMediaState()
-    this.updateMediaButtons()
+  async enableDeviceTrack(kind) {
+    if (this.acquiringDevices.has(kind)) return
+    this.acquiringDevices.add(kind)
+
+    const isVideo = kind === "video"
+    const label = isVideo ? "Kamera" : "Mikrofon"
+
+    try {
+      if (!window.isSecureContext) {
+        const msg = `${label} membutuhkan koneksi HTTPS atau http://localhost.`
+        this.setLocalStatus(msg, "amber")
+        this.setLiveCaption(msg, "amber")
+        return
+      }
+      if (!navigator.mediaDevices?.getUserMedia) {
+        const msg = `Browser ini tidak mendukung akses ${label.toLowerCase()}.`
+        this.setLocalStatus(msg, "amber")
+        this.setLiveCaption(msg, "amber")
+        return
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia(isVideo ? { video: true } : { audio: true })
+      const track = isVideo ? stream.getVideoTracks()[0] : stream.getAudioTracks()[0]
+      if (!track) {
+        throw new DOMException(`${label} tidak tersedia`, "NotFoundError")
+      }
+
+      this.localStream = this.localStream || new MediaStream()
+      const staleTracks = isVideo ? this.localStream.getVideoTracks() : this.localStream.getAudioTracks()
+      staleTracks.forEach((oldTrack) => {
+        oldTrack.onended = null
+        if (oldTrack !== track) {
+          this.localStream.removeTrack(oldTrack)
+          try { oldTrack.stop() } catch (_e) {}
+        }
+      })
+
+      this.localStream.addTrack(track)
+      track.onended = () => this.handleLocalTrackEnded(kind)
+
+      if (isVideo) {
+        this.lastVideoError = null
+        this.videoEnabled = true
+        if (!this.screenSharing) {
+          this.attachLocalVideo(this.localStream)
+          this.showLocalPlaceholder(false)
+          await this.attachOrReplaceOutgoingTrack("video", track, this.localStream)
+        }
+      } else {
+        this.lastAudioError = null
+        this.audioEnabled = true
+        await this.attachOrReplaceOutgoingTrack("audio", track, this.localStream)
+      }
+
+      this.refreshLocalStatusSummary()
+      this.broadcastMediaState()
+    } catch (error) {
+      if (isVideo) {
+        this.lastVideoError = error
+        this.videoEnabled = false
+      } else {
+        this.lastAudioError = error
+        this.audioEnabled = false
+      }
+      const msg = this.describeDeviceFailure(label, error)
+      this.setLocalStatus(msg, "amber")
+      this.setLiveCaption(msg, "amber")
+    } finally {
+      this.acquiringDevices.delete(kind)
+      this.updateMediaButtons()
+    }
   }
 
   toggleMirror() {
@@ -552,14 +962,16 @@ export default class extends Controller {
   }
 
   leaveCall(options = {}) {
+    this.sendLeaveSignal()
     this.callActive = false
     this.stopSpeechRecognition({ preserveCaption: true })
     this.stopAllMediaStreams()
     this.closeAllPeers()
+    this.peerMediaStates.clear()
+    this.pendingCandidates.clear()
     if (this.peersGridTarget) {
       this.peersGridTarget.innerHTML = ""
     }
-    this.subscription?.perform("leave", { client_id: this.clientId })
     this.showLocalPlaceholder(true)
     this.setLocalStatus(
       options.reason || "Anda telah keluar dari panggilan (kamera & mikrofon mati)",
@@ -574,6 +986,7 @@ export default class extends Controller {
 
   async rejoinCall() {
     this.callActive = true
+    this.leaveSent = false
     await this.acquireLocalMedia()
     this.subscription?.perform("join", {
       client_id: this.clientId,
@@ -623,13 +1036,14 @@ export default class extends Controller {
     }
     this.screenSharing = false
 
-    const camTrack = this.localStream?.getVideoTracks()[0] || null
+    const camTrack = this.liveTracks("video")[0] || null
     this.replaceOutgoingVideoTrack(camTrack)
 
-    if (this.localStream && this.videoEnabled) {
+    if (camTrack && this.videoEnabled) {
       this.attachLocalVideo(this.localStream)
       this.showLocalPlaceholder(false)
     } else {
+      this.videoEnabled = false
       if (this.hasLocalVideoTarget) {
         this.localVideoTarget.srcObject = this.localStream || null
       }
@@ -643,17 +1057,40 @@ export default class extends Controller {
 
   replaceOutgoingVideoTrack(newTrack) {
     const stream = this.screenStream || this.localStream
+    return this.attachOrReplaceOutgoingTrack("video", newTrack, stream)
+  }
+
+  async attachOrReplaceOutgoingTrack(kind, newTrack, stream) {
+    const updates = []
     this.peers.forEach((peerState, peerId) => {
-      const { pc } = peerState
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video")
-        || pc.getTransceivers().find((t) => t.receiver?.track?.kind === "video")?.sender
-      if (sender) {
-        sender.replaceTrack(newTrack).catch(() => {})
-      } else if (newTrack && stream) {
-        pc.addTrack(newTrack, stream)
-        this.createOfferForPeer(peerId, peerState.user)
-      }
+      updates.push(this.syncOutgoingTrackForPeer(peerId, peerState, kind, newTrack, stream))
     })
+    await Promise.all(updates)
+  }
+
+  async syncOutgoingTrackForPeer(peerId, peerState, kind, newTrack, stream) {
+    const { pc } = peerState
+    if (pc.signalingState === "closed") return
+
+    const transceiver = pc.getTransceivers().find(
+      (t) => t.sender?.track?.kind === kind || t.receiver?.track?.kind === kind
+    )
+
+    let needsRenegotiate = false
+    if (transceiver) {
+      if (newTrack && (transceiver.direction === "recvonly" || transceiver.direction === "inactive")) {
+        transceiver.direction = "sendrecv"
+        needsRenegotiate = true
+      }
+      await transceiver.sender.replaceTrack(newTrack).catch(() => {})
+    } else if (newTrack && stream) {
+      pc.addTrack(newTrack, stream)
+      needsRenegotiate = true
+    }
+
+    if (needsRenegotiate) {
+      await this.createOfferForPeer(peerId, peerState.user)
+    }
   }
 
   broadcastMediaState() {
@@ -682,34 +1119,36 @@ export default class extends Controller {
     const circleBase = "inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 
     if (this.hasMicButtonTarget) {
-      const hasMic = Boolean(this.localStream?.getAudioTracks().length)
-      this.micButtonTarget.disabled = !hasMic
+      const hasMic = this.liveTracks("audio").length > 0
+      const micOn = hasMic && this.audioEnabled
+      this.micButtonTarget.disabled = !this.callActive
       this.setDockButtonContent(
         this.micButtonTarget,
-        this.audioEnabled ? "mic" : "mic_off",
-        this.audioEnabled ? "Mic Aktif" : "Mic Mute"
+        micOn ? "mic" : "mic_off",
+        micOn ? "Mic Aktif" : (hasMic ? "Mic Mute" : "Nyalakan Mic")
       )
       this.micButtonTarget.className = `${circleBase} ${
-        !hasMic
+        !this.callActive
           ? "bg-white/10 text-white/40 cursor-not-allowed"
-          : this.audioEnabled
+          : micOn
             ? "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
             : "bg-danger text-on-danger hover:bg-danger-hover cursor-pointer"
       }`
     }
 
     if (this.hasCamButtonTarget) {
-      const hasCam = Boolean(this.localStream?.getVideoTracks().length)
-      this.camButtonTarget.disabled = !hasCam
+      const hasCam = this.liveTracks("video").length > 0
+      const camOn = hasCam && this.videoEnabled
+      this.camButtonTarget.disabled = !this.callActive
       this.setDockButtonContent(
         this.camButtonTarget,
-        this.videoEnabled ? "videocam" : "videocam_off",
-        this.videoEnabled ? "Cam Aktif" : "Cam Off"
+        camOn ? "videocam" : "videocam_off",
+        camOn ? "Cam Aktif" : (hasCam ? "Cam Off" : "Nyalakan Kamera")
       )
       this.camButtonTarget.className = `${circleBase} ${
-        !hasCam
+        !this.callActive
           ? "bg-white/10 text-white/40 cursor-not-allowed"
-          : this.videoEnabled
+          : camOn
             ? "bg-white/15 text-inverse-on-surface hover:bg-white/25 cursor-pointer"
             : "bg-danger text-on-danger hover:bg-danger-hover cursor-pointer"
       }`
@@ -896,7 +1335,7 @@ export default class extends Controller {
       amber: "border-warning-border bg-warning-soft text-on-warning-soft",
       rose: "border-danger-border bg-danger-soft text-on-danger-soft"
     }
-    this.liveCaptionsTarget.className = `mt-3 min-h-[34px] rounded-xl border px-3.5 py-2 text-xs leading-relaxed ${tones[tone] || tones.slate}`
+    this.liveCaptionsTarget.className = `sm:col-span-7 min-w-0 truncate rounded-[10px] border px-3 py-2 text-xs ${tones[tone] || tones.slate}`
     this.liveCaptionsTarget.textContent = message
   }
 
