@@ -6,8 +6,9 @@ Rails.application.configure do
   # Code is not reloaded between requests.
   config.enable_reloading = false
 
-  # Eager load code on boot for better performance and memory savings (ignored by Rake tasks).
-  config.eager_load = true
+  # Eager load code on persistent servers; defer on serverless cold boots (e.g. Vercel) unless EAGER_LOAD=true.
+  is_vercel_runtime = ENV["VERCEL"].present? || ENV["VERCEL_ENV"].present?
+  config.eager_load = ENV.key?("EAGER_LOAD") ? (ENV["EAGER_LOAD"] == "true") : !is_vercel_runtime
 
   # Full error reports are disabled.
   config.consider_all_requests_local = false

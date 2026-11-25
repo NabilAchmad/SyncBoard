@@ -36,7 +36,7 @@ plugin :tmp_restart
 
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
 # Skip when Process.fork is unavailable (e.g., native Windows Ruby) or inside Vercel serverless runtimes unless explicitly enabled.
-is_vercel_runtime = ENV["VERCEL"].present?
+is_vercel_runtime = ENV["VERCEL"].present? || ENV["VERCEL_ENV"].present?
 solid_queue_requested = ENV["SOLID_QUEUE_IN_PUMA"] == "true" || (ENV["RAILS_ENV"] == "production" && !is_vercel_runtime && ENV["SOLID_QUEUE_IN_PUMA"] != "false")
 if solid_queue_requested && Process.respond_to?(:fork)
   plugin :solid_queue

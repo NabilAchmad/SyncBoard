@@ -48,4 +48,5 @@ Rails.application.routes.draw do
   end
 
   get "up" => "rails/health#show", as: :rails_health_check
+  get "up/warm" => "health#warm", as: :rails_warm_health_check
 end
