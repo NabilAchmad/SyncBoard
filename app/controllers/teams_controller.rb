@@ -1,5 +1,6 @@
 class TeamsController < ApplicationController
   before_action :set_team, only: %i[update switch regenerate_code leave]
+  rate_limit to: 10, within: 3.minutes, only: :join, with: -> { redirect_to teams_path, alert: "Terlalu banyak percobaan kode undangan. Coba lagi beberapa menit lagi." }
 
   def index
     @memberships = load_memberships_with_stats
@@ -61,11 +62,15 @@ class TeamsController < ApplicationController
       return
     end
 
-    team.team_memberships.create!(
-      user: current_user,
-      role: "member",
-      joined_at: Time.current
-    )
+    begin
+      team.team_memberships.create!(
+        user: current_user,
+        role: "member",
+        joined_at: Time.current
+      )
+    rescue ActiveRecord::RecordNotUnique
+      # Concurrent double-submit safely resolves to existing membership
+    end
     set_current_team(team)
 
     redirect_to root_path, notice: "Berhasil bergabung ke tim '#{team.name}'!"

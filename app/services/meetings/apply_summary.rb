@@ -1,6 +1,6 @@
 module Meetings
   class ApplySummary
-    Result = Struct.new(:applied_count, :created_tasks, :updated_tasks, keyword_init: true)
+    Result = Struct.new(:applied_count, :created_tasks, :updated_tasks, :already_approved, keyword_init: true)
 
     def initialize(meeting:, actor:)
       @meeting = meeting
@@ -14,9 +14,15 @@ module Meetings
       created_tasks = []
       updated_tasks = []
       applied_count = 0
+      already_approved = false
 
-      ActiveRecord::Base.transaction do
-        pending_items = @meeting.meeting_action_items.includes(:target_task, :assignee).where(selected: true, applied: false)
+      @meeting.with_lock do
+        pending_items = @meeting.meeting_action_items.includes(:target_task, :assignee).where(selected: true, applied: false).to_a
+
+        if @meeting.approved? && pending_items.empty?
+          already_approved = true
+          next
+        end
 
         pending_items.each do |item|
           case item.action_type
@@ -34,7 +40,7 @@ module Meetings
         @meeting.update!(
           status: "approved",
           approved_by: @actor,
-          approved_at: Time.current,
+          approved_at: @meeting.approved_at || Time.current,
           ended_at: @meeting.ended_at || Time.current,
           rejection_reason: nil
         )
@@ -52,10 +58,17 @@ module Meetings
         )
       end
 
-      @project.broadcast_kanban_refresh!
-      @meeting.broadcast_summary_refresh!
+      unless already_approved
+        @project.broadcast_kanban_refresh!
+        @meeting.broadcast_summary_refresh!
+      end
 
-      Result.new(applied_count: applied_count, created_tasks: created_tasks, updated_tasks: updated_tasks)
+      Result.new(
+        applied_count: applied_count,
+        created_tasks: created_tasks,
+        updated_tasks: updated_tasks,
+        already_approved: already_approved
+      )
     end
 
     private

@@ -193,8 +193,13 @@ class MeetingsController < ApplicationController
 
   def approve
     result = Meetings::ApplySummary.new(meeting: @meeting, actor: current_user).call
-    redirect_to project_meeting_path(@project, @meeting),
-      notice: "Rangkuman di-ACC! #{result.applied_count} perubahan otomatis diterapkan ke Kanban Board."
+    notice = if result.already_approved
+      "Rangkuman rapat ini sudah di-ACC sebelumnya."
+    else
+      "Rangkuman di-ACC! #{result.applied_count} perubahan otomatis diterapkan ke Kanban Board."
+    end
+
+    redirect_to project_meeting_path(@project, @meeting), notice: notice
   rescue ArgumentError => e
     redirect_to project_meeting_path(@project, @meeting), alert: e.message
   end

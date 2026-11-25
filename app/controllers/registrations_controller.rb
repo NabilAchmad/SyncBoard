@@ -1,6 +1,7 @@
 class RegistrationsController < ApplicationController
   allow_unauthenticated_access
   layout "auth"
+  rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_registration_path, alert: "Terlalu banyak percobaan pendaftaran. Coba lagi beberapa menit lagi." }
 
   def new
     redirect_to root_path if authenticated?
