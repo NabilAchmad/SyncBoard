@@ -3,7 +3,12 @@
 # Mark the database schema as having been generated.
 db/schema.rb linguist-generated
 
-# Mark any vendored files as having been vendored.
+# Mark any vendored files as being vendored.
 vendor/* linguist-vendored
 config/credentials/*.yml.enc diff=rails_credentials
 config/credentials.yml.enc diff=rails_credentials
+
+# Keep Linux binstubs LF and Windows batch scripts CRLF
+bin/* text eol=lf
+bin/*.bat text eol=crlf
+bin/*.cmd text eol=crlf
